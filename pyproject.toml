@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "accessx"
+version = "0.1.0"
+description = "AccessX: X-minute city accessibility tools"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "geopandas",
+  "shapely",
+  "tobler",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
