@@ -6,9 +6,62 @@ from typing import Optional, Union
 import geopandas as gpd
 import networkx as nx
 import osmnx as ox
+from pathlib import Path
+from typing import Union
+
+import osmnx as ox
+import networkx as nx
+
+from accessx.io import save_gdf
 
 
-def build_walk_graph(
+def save_graph(
+    G: nx.MultiDiGraph,
+    *,
+    out_dir: Union[str, Path],
+    base_name: str = "street",
+    save_nodes: bool = True,
+    save_edges: bool = True,
+    driver: str = "GeoJSON",
+) -> None:
+    """
+    Save an OSMnx graph as nodes and/or edges files.
+
+    Parameters
+    ----------
+    G : MultiDiGraph
+        Projected OSMnx graph.
+    out_dir : str | Path
+        Output directory.
+    base_name : str
+        Base filename (suffixes '_nodes_OSM' and '_edges_OSM' are added automatically).
+    save_nodes : bool
+        If True, save nodes GeoDataFrame.
+    save_edges : bool
+        If True, save edges GeoDataFrame.
+    driver : str
+        OGR driver (default: GeoJSON).
+    """
+    if not save_nodes and not save_edges:
+        raise ValueError("At least one of save_nodes or save_edges must be True.")
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    nodes_gdf, edges_gdf = ox.graph_to_gdfs(G, nodes=True, edges=True)
+
+    if save_nodes:
+        nodes_path = out_dir / f"{base_name}_nodes_OSM.geojson"
+        save_gdf(nodes_gdf, nodes_path, driver=driver)
+
+    if save_edges:
+        # keep u, v, key as explicit columns (important)
+        edges_gdf = edges_gdf.reset_index()
+        edges_path = out_dir / f"{base_name}_edges_OSM.geojson"
+        save_gdf(edges_gdf, edges_path, driver=driver)
+
+
+def build_network(
     AOI: gpd.GeoDataFrame,
     *,
     city_epsg: Union[int, str],
