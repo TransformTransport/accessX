@@ -12,7 +12,7 @@ from typing import Union
 import osmnx as ox
 import networkx as nx
 
-from accessx.io import save_gdf
+from accessx.io import save_gdf, read_gdf
 
 
 def save_graph(
@@ -60,6 +60,79 @@ def save_graph(
         edges_path = out_dir / f"{base_name}_edges_OSM.geojson"
         save_gdf(edges_gdf, edges_path, driver=driver)
 
+
+def load_graph(
+    *,
+    out_dir: Optional[Union[str, Path]] = None,
+    base_name: Optional[str] = None,
+    nodes_path: Optional[Union[str, Path]] = None,
+    edges_path: Optional[Union[str, Path]] = None,
+    crs: Optional[Union[int, str]] = None,
+    node_id_col: str = "osmid",
+) -> nx.MultiDiGraph:
+    """
+    Load a graph from saved nodes/edges files and rebuild an OSMnx graph.
+
+    Reads nodes/edges (GeoJSON/GPKG/etc.), restores required indexes:
+    - nodes indexed by node_id_col (default 'osmid')
+    - edges indexed by ['u','v','key']
+
+    Provide either:
+    - (out_dir + base_name) following AccessX naming convention, OR
+    - explicit nodes_path and edges_path.
+    """
+    # Determine paths
+    if nodes_path is None or edges_path is None:
+        if out_dir is None or base_name is None:
+            raise ValueError("Provide either (nodes_path AND edges_path) OR (out_dir AND base_name).")
+        out_dir = Path(out_dir)
+        nodes_path = out_dir / f"{base_name}_nodes_OSM.geojson"
+        edges_path = out_dir / f"{base_name}_edges_OSM.geojson"
+
+    nodes_path = Path(nodes_path)
+    edges_path = Path(edges_path)
+
+    if not nodes_path.exists():
+        raise FileNotFoundError(f"Nodes file not found: {nodes_path}")
+    if not edges_path.exists():
+        raise FileNotFoundError(f"Edges file not found: {edges_path}")
+
+    # Read
+    nodes = read_gdf(nodes_path, crs=crs)
+    edges = read_gdf(edges_path, crs=crs)
+
+    # --- Restore nodes index ---
+    if node_id_col in nodes.columns:
+        nodes = nodes.set_index(node_id_col, drop=True)
+    else:
+        raise ValueError(
+            f"Nodes file must contain a '{node_id_col}' column to rebuild the graph. "
+            f"Columns found: {list(nodes.columns)}"
+        )
+
+    # --- Restore edges MultiIndex ---
+    required = ["u", "v", "key"]
+    missing = [c for c in required if c not in edges.columns]
+    if missing:
+        raise ValueError(
+            f"Edges file must contain columns {required}. Missing: {missing}. "
+            "Make sure edges were saved with edges_gdf.reset_index()."
+        )
+
+    # Ensure integer-like types (GeoJSON can read these as floats/strings)
+    for c in required:
+        edges[c] = edges[c].astype("int64")
+
+    edges = edges.set_index(required, drop=True)
+
+    # Rebuild graph
+    G = ox.graph_from_gdfs(nodes, edges)
+
+    # Keep CRS at graph level for downstream work
+    if nodes.crs is not None:
+        G.graph["crs"] = nodes.crs
+
+    return G
 
 def build_network(
     AOI: gpd.GeoDataFrame,
