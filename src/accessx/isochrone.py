@@ -30,7 +30,7 @@ def find_nearest_node_within_distance(G, hex, max_distance, city_epsg=None):
     return None
 
 
-def make_walksheds(
+def calculate_isochrones(
     G: nx.MultiDiGraph,
     hexes: gpd.GeoDataFrame,
     *,
@@ -61,20 +61,6 @@ def make_walksheds(
     if G.graph.get("crs") is None:
         raise ValueError("Graph has no CRS in G.graph['crs']. Project graph to a metric CRS first.")
 
-    # ensure point origins (centroids) without mutating input
-    # if hexes.geom_type.iloc[0] != "Point":
-    #     ctrd = hexes[[id_col, "geometry"]].copy()
-    #     ctrd["geometry"] = ctrd.geometry.centroid
-    #     ctrd = gpd.GeoDataFrame(ctrd, geometry="geometry", crs=hexes.crs)
-    # else:
-    #     ctrd = hexes[[id_col, "geometry"]].copy()
-
-    # # try to align CRS with graph CRS
-    # try:
-    #     ctrd = ctrd.to_crs(G.graph["crs"])
-    # except Exception:
-    #     pass
-
     # prepare saving
     save_dir_path = None
     if save_dir is not None:
@@ -88,7 +74,7 @@ def make_walksheds(
         rows = []  # rows for this threshold (so we can save per-threshold)
         trip_time_f = float(trip_time)
         thr_str = str(trip_time).replace(".", "p")   # e.g. 5 -> "5", 12.5 -> "12p5"
-        geom_col = f"geom_{thr_str}"
+        geom_col = f"geom_{cost_attr}_{thr_str}"
         
         for _, hex in hexes.iterrows():
             hex_geom = hex.geometry
