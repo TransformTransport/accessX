@@ -153,7 +153,7 @@ def calculate_isochrones(
     n_jobs: int = 1,
 ) -> gpd.GeoDataFrame:
     """
-    Efficient isochrone polygons:
+    Ιsochrone polygons:
     - For each hex: run one Dijkstra up to max_cost
     - Slice reachable nodes at thresholds derived from `interval_size`
     - Build polygon per threshold using method="edges" or "hull"
