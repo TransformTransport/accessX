@@ -5,7 +5,8 @@ Inspired by the usability of tools like OSMnx and NetworkX, accessX aims for a s
 
 At its core, accessX is designed to answer practical questions clearly:
 
-What can people reach within X minutes?
-How far is the nearest service of each type?
-How does accessibility vary across neighborhoods and population demand?
+* What can people reach within X minutes?
+* How far is the nearest service of each type?
+* How does accessibility vary across neighborhoods and population demand?
+* 
 The library is OSM-first, data-agnostic, and built for reproducible urban accessibility analysis with clean Python APIs.
