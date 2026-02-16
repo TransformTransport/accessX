@@ -126,7 +126,11 @@ def _process_hex_worker(item):
             geom = gpd.GeoSeries(list(e)).union_all()
 
             if infill and geom is not None:
-                geom = geom.convex_hull
+                try:
+                    geom = Polygon(geom.exterior)
+                except Exception:
+                    # Keep original geometry if it is not a simple Polygon.
+                    pass
         else:
             raise ValueError("method must be 'edges' or 'hull'")
 
