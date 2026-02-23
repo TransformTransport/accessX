@@ -16,43 +16,87 @@ from shapely.geometry import MultiPolygon
 # -----------------------------
 
 DEFAULT_TAGS: Dict[str, Dict] = {
-    "greenspace": {
-        "leisure": ["park", "nature_reserve"],
-        "landuse": ["recreation_ground", "grass", "forest"],
-        "natural": ["wood", "grassland", "scrub", "heath", "hill"],
+    # ############# Neighborhood services #############################
+    "neighborhood_services": {
+        "amenity": [
+            "post_office",
+            "bank", "atm",
+            "community_centre", "social_facility", "social_centre",
+            "police", "fire_station",
+            "place_of_worship",
+            "drinking_water", "water_point", "watering_place",
+            "bar",
+            "cafe", "ice_cream",
+            "townhall",
+        ],
+        "shop": ["tobacco", "kiosk", "newsagent"],
+        "place": ["square"],
+        # optional / future
+        "office": ["cleaning", "gardener", "computer"],
     },
-    "playground": {"leisure": ["playground"]},
-    "supermarket": {"shop": ["supermarket"]},
-    "bakery": {"shop": ["bakery"]},
-    "butcher": {"shop": ["butcher"]},
-    "greengrocer": {"shop": ["greengrocer"]},
-    "seafood": {"shop": ["seafood"]},
-    "school": {"amenity": ["kindergarten", "school"]},
-    "culture": {"tourism": ["museum", "gallery", "artwork"], "amenity": ["arts_centre"]},
-    "sport": {
-        "leisure": ["sports_centre", "stadium", "sports_hall", "swimming_pool", "fitness_centre",
-                    "fitness_station", "pitch", "track"],
-        "sport": True,
+
+    # ############## Healthcare #############################
+    "healthcare": {
+        "amenity": ["hospital", "pharmacy", "clinic", "dentist", "doctor", "veterinary"],
+        "emergency": True,  # any emergency=*
     },
-    "pharmacy": {"amenity": ["pharmacy"]},
-    "nightlife": {
-        "amenity": ["bar", "pub", "nightclub", "music_venue", "cinema", "theatre"],
-        "tourism": ["nightlife"],
+
+    # ############# Neighbourhood shops #############################
+    "neighbourhood_shops": {
+        "shop": [
+            "grocery", "supermarket", "convenience",
+            "greengrocer", "butcher", "dairy", "bakery",
+            "general", "variety_store",
+            "books",
+            "electronics", "clothes", "shoes",
+        ],
+        "amenity": [
+            "vending_machine",
+            "toy_library",
+            "marketplace",
+            "restaurant", "fast_food", "food_court",
+        ],
     },
-    "metro": {"station": ["subway"]},
-    "bus_tram": {
+
+    # ############# Education #############################
+    "education": {
+        "amenity": [
+            "kindergarten", "childcare",
+            "school",
+            "university", "college", "research_institute",
+            "music_school", "language_school", "first_aid_school",
+            "training", "driving_school", "dancing_school",
+            "library", "public_bookcase",
+        ],
+    },
+
+    # ############# Sports #############################
+    "sports": {
+        "leisure": ["fitness_centre", "fitness_station", "sports_centre", "sports_hall"],
+        "sport": ["gymnastics", "swimming"],
+    },
+
+    # ############# Cultural & entertainment #############################
+    "cultural": {
+        "amenity": ["cinema", "theatre", "arts_centre"],
+        "tourism": ["museum"],
+    },
+
+    # ############# Open Leisure #############################
+    "open_leisure": {
+        "leisure": ["park", "playground", "dog_park", "garden"],
+        "amenity": ["bbq"],
+    },
+
+    # ############# Mobility #############################
+    "mobility": {
         "highway": ["bus_stop"],
-        "railway": ["tram_stop"],
-        "amenity": ["bus_station"],
+        "railway": ["tram_stop", "subway_entrance", "station", "halt"],
+        "amenity": ["bicycle_parking", "bicycle_rental", "car_sharing", "taxi"],
+        # optional (from your old library style)
         "public_transport": ["stop_position"],
     },
-    "public_square": {"place": ["square"], "amenity": ["marketplace", "town_square"]},
-    "cafe_restaurant": {"amenity": ["cafe", "restaurant", "fast_food"]},
-    "clothing_stores": {"shop": ["clothes", "boutique", "fashion_accessories", "outfitter", "tailor", "second_hand"]},
-    "university": {"amenity": ["college", "university"]},
-    "library": {"amenity": ["library"]},
 }
-
 
 # -----------------------------
 # small geometry helpers (your style)
@@ -123,6 +167,7 @@ def get_pois_osm(
     geopandas.GeoDataFrame
         GeoDataFrame containing OSM-derived POIs.
     """
+    AOI_wgs84 = AOI_wgs84.to_crs(4326)
     tags_library = tags_library or DEFAULT_TAGS
     if categories is None:
         categories = list(tags_library.keys())
@@ -164,7 +209,7 @@ def get_pois_osm(
         if raise_on_empty:
             raise InsufficientResponseError("No matching features for any selected category.")
         return gpd.GeoDataFrame(
-            columns=["id", "osmid", "osm_type", "category", "geometry"],
+            columns=["id", "osmid","name", "osm_type", "category", "geometry"],
             geometry="geometry",
             crs=AOI_wgs84.crs,
         )
@@ -176,7 +221,7 @@ def get_pois_osm(
     all_gdf["id"] = np.arange(len(all_gdf))
 
     # ---- column selection + ordering ----
-    core_cols = ["id", "osmid", "osm_type", "category", "geometry"]
+    core_cols = ["id", "osmid","name",  "osm_type", "category", "geometry"]
 
     if columns == "minimal":
         all_gdf = all_gdf[core_cols]

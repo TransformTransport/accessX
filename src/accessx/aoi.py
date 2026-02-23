@@ -105,7 +105,6 @@ def make_hex_grid(
     resolution: int = 9,
     clip: bool = True,
     return_geoms: bool = True,
-    ensure_wgs84: bool = True,
     save_path: Optional[Union[str, Path]] = None,
 ) -> gpd.GeoDataFrame:
     """
@@ -121,8 +120,6 @@ def make_hex_grid(
         If True, clip hexes to AOI footprint (depends on tobler implementation).
     return_geoms : bool
         If True, return hex geometries.
-    ensure_wgs84 : bool
-        If True, force AOI to EPSG:4326 before calling h3fy (recommended).
     save_path : str | Path, optional
         If provided, saves the hex grid to this path.
 
@@ -131,7 +128,7 @@ def make_hex_grid(
     GeoDataFrame
         Hex grid with a `hex_id` column and geometry (if return_geoms=True), in EPSG:4326.
     """
-    aoi_in = aoi.to_crs(4326) if ensure_wgs84 else aoi
+    aoi_in = aoi.to_crs(4326)
 
     hex_gdf = tobler.util.h3fy(
         aoi_in,

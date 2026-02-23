@@ -198,7 +198,8 @@ def compute_nearest_poi_cost(
     poi_id_col: str = "id",
     max_distance_from_graph: float = 200.0,
     number_of_nearest: Optional[int] = None,
-) -> gpd.GeoDataFrame:
+    output: Literal["list", "long", "wide"] = "list",
+) -> Union[gpd.GeoDataFrame, pd.DataFrame]:
     """
     Compute nearest reachable POI cost for each hex using direct graph routing.
 
@@ -209,6 +210,9 @@ def compute_nearest_poi_cost(
     - if number_of_nearest is None -> returns only the nearest POI per category as a one-item list
     - if number_of_nearest is set -> returns up to that many nearest POIs
     - if no POI is reachable within max_cost -> returns []
+    - output="list" keeps list-of-tuples columns (default)
+    - output="long" returns one row per (hex, category, rank)
+    - output="wide" returns one row per hex with nearest_cost_* and nearest_poi_* columns
     """
     # -------------------------
     # 1) validate inputs
@@ -235,6 +239,8 @@ def compute_nearest_poi_cost(
         raise ValueError("max_distance_from_graph must be > 0.")
     if number_of_nearest is not None and number_of_nearest <= 0:
         raise ValueError("number_of_nearest must be > 0 when provided.")
+    if output not in {"list", "long", "wide"}:
+        raise ValueError("output must be one of: 'list', 'long', 'wide'.")
 
     graph_has_cost_attribute = any(
         cost_attr in edge_data for _, _, _, edge_data in graph.edges(keys=True, data=True)
@@ -331,7 +337,43 @@ def compute_nearest_poi_cost(
             nearest_poi_costs.at[hex_index, f"nearest_pois_{poi_category_name}"] = category_pairs[:nearest_limit]
 
     nearest_poi_costs = nearest_poi_costs.to_crs(original_hex_crs)
-    return gpd.GeoDataFrame(nearest_poi_costs, geometry="geometry", crs=original_hex_crs)
+    nearest_poi_costs = gpd.GeoDataFrame(nearest_poi_costs, geometry="geometry", crs=original_hex_crs)
+
+    if output == "list":
+        return nearest_poi_costs
+
+    if output == "long":
+        long_rows: List[Dict[str, Union[int, float, str]]] = []
+        for _, row in nearest_poi_costs.iterrows():
+            hex_id_value = row[id_col]
+            for poi_category_name in poi_categories:
+                category_col_name = f"nearest_pois_{poi_category_name}"
+                pairs = row[category_col_name]
+                for rank, (cost_value, poi_id_value) in enumerate(pairs, start=1):
+                    long_rows.append(
+                        {
+                            id_col: hex_id_value,
+                            category_col: poi_category_name,
+                            "rank": rank,
+                            "cost": cost_value,
+                            poi_id_col: poi_id_value,
+                        }
+                    )
+        return pd.DataFrame(long_rows)
+
+    # output == "wide"
+    wide_output = nearest_poi_costs[[id_col, "geometry"]].copy()
+    for poi_category_name in poi_categories:
+        source_col = f"nearest_pois_{poi_category_name}"
+        for rank in range(1, nearest_limit + 1):
+            wide_output[f"nearest_cost_{poi_category_name}_{rank}"] = nearest_poi_costs[source_col].apply(
+                lambda pairs: pairs[rank - 1][0] if len(pairs) >= rank else None
+            )
+            wide_output[f"nearest_poi_{poi_category_name}_{rank}"] = nearest_poi_costs[source_col].apply(
+                lambda pairs: pairs[rank - 1][1] if len(pairs) >= rank else None
+            )
+
+    return gpd.GeoDataFrame(wide_output, geometry="geometry", crs=original_hex_crs)
 
 
 def compute_hansen_accessibility(
