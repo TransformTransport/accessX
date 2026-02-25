@@ -1,16 +1,16 @@
 # accessX
 
-`accessX` is a Python library for **X-minute accessibility analysis**, where **X** is a flexible time threshold (for example 5, 10, 15, or 20 minutes) used to study proximity to opportunities across a city.
+`accessX` is a Python library for **proximity-based accessibility analysis**, where **X** is a any type of cost threshold  used to study proximity to opportunities across a city.
 
-It is designed for workflows such as **15-minute city planning** and broader proximity-based policy analysis, helping quantify what people can reach within a target travel time. Under the hood, accessX builds on proven geospatial/network tools, especially **OSMnx** (for OpenStreetMap network and feature workflows) and **NetworkX** (for graph routing and cost-based accessibility computation), while providing a cleaner high-level API focused on accessibility modeling.
+It is designed for workflows such as **15-minute city planning** and broader proximity-based policy analysis, helping quantify what people can reach within a target travel cost. Under the hood, accessX builds on proven geospatial/network tools, especially **OSMnx**  and **NetworkX**, while providing a high-level API focused on accessibility assessments.
 
-At its core, accessX is designed to answer practical questions clearly:
+At its core, accessX is designed to help explore accessibility-related questions such as:
 
-- What can people reach within X minutes?
+- What can people reach within X-minutes?
 - How far is the nearest service of each type?
 - How does accessibility vary across neighborhoods and population demand?
 
-The library is OSM-first, data-agnostic, and built for reproducible urban accessibility analysis with clean Python APIs.
+The library is OSM-first, data-agnostic, and built for reproducible urban accessibility analysis.
 
 ## Typical Workflow
 
