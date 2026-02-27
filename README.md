@@ -18,15 +18,15 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 
 ## Library Modules
 
-- `accessx.aoi`
+### `accessx.aoi`
 - Load an AOI from file or bbox (`load_aoi`).
 - Build H3 hex grids over the AOI (`make_hex_grid`).
 
-- `accessx.graph`
+### `accessx.graph`
 - Download and preprocess OSM street networks (`build_network`).
 - Save/load graph nodes and edges (`save_graph`, `load_graph`).
 
-- `accessx.cost`
+### `accessx.cost`
 - Add custom edge-cost layers (`add_edge_cost`).
 - Built-in helpers for travel-time costs (constant speed, slope-based).
 
@@ -35,7 +35,7 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - Supports multiple thresholds and polygon methods (`edges`, `hull`).
 - Useful for map visualization and communication.
 
-- `accessx.poi`
+### `accessx.poi`
 - Collect POIs from OSM by category (`get_pois_osm`).
 - Keeps OSM identity fields and supports clean/minimal output schemas.
 
@@ -45,7 +45,7 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - `compute_hansen_accessibility`: gravity-based accessibility scores.
 - `compute_2sfca_accessibility`: catchment-based 2SFCA accessibility.
 
-- `accessx.io`
+### `accessx.io`
 - Lightweight read/write helpers for GeoDataFrames.
 
 ## Accessibility Models Included
