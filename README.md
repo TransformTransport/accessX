@@ -39,7 +39,7 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - Collect POIs from OSM by category (`get_pois_osm`).
 - Keeps OSM identity fields and supports clean/minimal output schemas.
 
-- `accessx.accessibility`
+### `accessx.accessibility`
 - `count_accessible_pois`: reachable opportunity counts by category.
 - `compute_nearest_poi_cost`: nearest POI cost by category.
 - `compute_hansen_accessibility`: gravity-based accessibility scores.
@@ -47,6 +47,7 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 
 ### `accessx.io`
 - Lightweight read/write helpers for GeoDataFrames.
+
 
 ## Accessibility Models Included
 
