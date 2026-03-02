@@ -18,6 +18,9 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 
 ## Library Modules
 
+### `accessx.io`
+- Lightweight read/write helpers for GeoDataFrames.
+
 ### `accessx.aoi`
 - Load an AOI from file or bbox (`load_aoi`).
 - Build H3 hex grids over the AOI (`make_hex_grid`).
@@ -44,9 +47,6 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - `compute_nearest_poi_cost`: nearest POI cost by category.
 - `compute_hansen_accessibility`: gravity-based accessibility scores.
 - `compute_2sfca_accessibility`: catchment-based 2SFCA accessibility.
-
-### `accessx.io`
-- Lightweight read/write helpers for GeoDataFrames.
 
 
 ## Accessibility Models Included
