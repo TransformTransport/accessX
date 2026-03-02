@@ -401,9 +401,54 @@ def compute_hansen_accessibility(
     - O_j is the POI opportunity weight
     - c_ij is travel cost from hex i to POI j (from graph shortest path)
 
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Projected network graph with CRS in graph.graph["crs"].
+        Must include numeric edge attribute `cost_attr`.
+    hexes : GeoDataFrame
+        Hex polygons/points with columns `[id_col, geometry]`.
+        If geometry is polygonal, centroid is used for graph snapping.
+    pois : GeoDataFrame
+        POIs with at least `[category_col, geometry]`.
+        If geometry is polygonal, centroid is used for graph snapping.
+    max_cost : int | float
+        Maximum travel cost cutoff for routing. Must be > 0.
+        Uses same units as `cost_attr` (e.g., minutes).
+    cost_attr : str
+        Edge weight attribute used in shortest path computation.
+    id_col : str, default "hex_id"
+        Hex identifier column in `hexes`.
+    category_col : str, default "category"
+        POI category column in `pois`.
+    poi_weight_col : str, optional
+        Numeric POI weight column (e.g., capacity, area, demand proxy).
+        Values must be >= 0. Missing/non-numeric values are replaced by `default_poi_weight`.
+        If None, all POIs use `default_poi_weight`.
+    category_weights : dict[str, float], optional
+        Optional multiplier by category, e.g. `{"school": 2.0, "pharmacy": 1.2}`.
+        Categories not listed default to 1.0.
+        All values must be >= 0.
+    default_poi_weight : float, default 1.0
+        Fallback weight used when `poi_weight_col` is None or invalid/missing.
+        Must be >= 0.
+    max_distance_from_graph : float, default 200.0
+        Maximum allowed snapping distance (graph CRS units, typically meters)
+        from each hex centroid to the nearest graph node. Must be > 0.
+        Hexes beyond this distance keep zero scores.
+    beta : float, default 0.15
+        Exponential decay parameter in `exp(-beta * cost)`. Must be > 0.
+        Higher values produce faster distance decay.
+
     Output columns:
     - hansen_<category> for each POI category
     - hansen_total as the sum across all categories
+
+    Returns
+    -------
+    GeoDataFrame
+        One row per hex with geometry and Hansen scores.
+        Scores are non-negative and typically unbounded above.
     """
     # -------------------------
     # 1) validate inputs
