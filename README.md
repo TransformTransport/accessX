@@ -33,7 +33,7 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - Add custom edge-cost layers (`add_edge_cost`).
 - Built-in helpers for travel-time costs (constant speed, slope-based).
 
-- `accessx.isochrone`
+### `accessx.isochrone`
 - Generate walksheds/isochrones per hex (`calculate_isochrones`).
 - Supports multiple thresholds and polygon methods (`edges`, `hull`).
 - Useful for map visualization and communication.
