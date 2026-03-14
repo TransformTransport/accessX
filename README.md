@@ -1,5 +1,8 @@
 # accessX
 
+To Add:
+- Equity
+
 `accessX` is a Python library for **proximity-based accessibility analysis**, where **X** is a any type of cost threshold  used to study proximity to opportunities across a city.
 
 It is designed for workflows such as **15-minute city planning** and broader proximity-based policy analysis, helping quantify what people can reach within a target travel cost. Under the hood, accessX builds on proven geospatial/network tools, especially **OSMnx**  and **NetworkX**, while providing a high-level API focused on accessibility assessments.
