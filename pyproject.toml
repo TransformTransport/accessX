@@ -5,14 +5,54 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "accessx"
 version = "0.1.0"
-description = "AccessX: X-minute city accessibility tools"
+description = "Python tools for X-minute accessibility analysis and proximity-based urban planning."
 readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Vasileios Milias" }
+]
+keywords = [
+  "accessibility",
+  "x-minute city",
+  "15-minute city",
+  "proximity-based planning",
+  "urban planning",
+  "pedestrian accessibility",
+  "bicycle accessibility",
+  "osm",
+  "osmnx",
+  "network analysis",
+  "geospatial",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: GIS",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
   "geopandas",
+  "matplotlib",
+  "networkx",
+  "numpy",
+  "osmnx",
+  "pandas",
+  "seaborn",
   "shapely",
   "tobler",
 ]
+
+[project.urls]
+Homepage = "https://github.com/TransformTransport/accessX"
+Repository = "https://github.com/TransformTransport/accessX"
+Issues = "https://github.com/TransformTransport/accessX/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

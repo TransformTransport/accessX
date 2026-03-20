@@ -1,8 +1,5 @@
 # accessX
 
-To Add:
-- Equity
-
 `accessX` is a Python library for **proximity-based accessibility analysis**, where **X** is a any type of cost threshold  used to study proximity to opportunities across a city.
 
 It is designed for workflows such as **15-minute city planning** and broader proximity-based policy analysis, helping quantify what people can reach within a target travel cost. Under the hood, accessX builds on proven geospatial/network tools, especially **OSMnx**  and **NetworkX**, while providing a high-level API focused on accessibility assessments.
@@ -46,10 +43,18 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - Keeps OSM identity fields and supports clean/minimal output schemas.
 
 ### `accessx.accessibility`
-- `count_accessible_pois`: reachable opportunity counts by category.
-- `compute_nearest_poi_cost`: nearest POI cost by category.
-- `compute_hansen_accessibility`: gravity-based accessibility scores.
-- `compute_2sfca_accessibility`: catchment-based 2SFCA accessibility.
+- Count reachable opportunities by category (`count_accessible_pois`).
+- Estimate nearest POI cost by category (`compute_nearest_poi_cost`).
+- Compute Hansen accessibility scores (`compute_hansen_accessibility`).
+- Compute catchment-based 2SFCA accessibility (`compute_2sfca_accessibility`).
+
+
+### `accessx.equity`
+- Estimate Lorenz curves and Gini indices for accessibility metrics (`calculate_lorenz`).
+- Plot Lorenz curves and Gini tables for selected metrics (`plot_lorenz_curves`, `plot_gini_table`).
+- Compute sufficientarian scores from explicit accessibility thresholds (`compute_sufficientarian_score`).
+- Visualize sufficientarian score distributions and attainment levels (`plot_sufficientarian_score`).
+
 
 
 ## Accessibility Models Included
