@@ -125,6 +125,13 @@ def load_graph(
 
     edges = edges.set_index(required, drop=True)
 
+    # Rebuild node geometry from x/y to avoid precision mismatches after file round-trip.
+    if "x" not in nodes.columns or "y" not in nodes.columns:
+        raise ValueError(
+            "Nodes file must contain 'x' and 'y' columns to rebuild geometry consistently."
+        )
+    nodes["geometry"] = gpd.points_from_xy(nodes["x"], nodes["y"], crs=nodes.crs)
+
     # Rebuild graph
     G = ox.graph_from_gdfs(nodes, edges)
 

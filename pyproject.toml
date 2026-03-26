@@ -39,6 +39,7 @@ classifiers = [
 ]
 dependencies = [
   "geopandas",
+  "h3",
   "matplotlib",
   "networkx",
   "numpy",
