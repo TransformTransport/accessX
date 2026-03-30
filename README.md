@@ -25,6 +25,14 @@ The library is OSM-first, data-agnostic, and built for reproducible urban access
 - Load an AOI from file or bbox (`load_aoi`).
 - Build H3 hex grids over the AOI (`make_hex_grid`).
 
+### `accessx.population`
+- Infer the WorldPop country from an AOI or hex grid (`infer_country_from_geometry`).
+- Download and optionally clip the matching WorldPop raster (`get_worldpop_raster`).
+- Convert a population raster into a vector population grid (`raster_to_population_grid`).
+- Aggregate WorldPop or other population rasters to hex cells (`map_population_to_hexes`).
+- Uses area-weighted overlap so each raster cell is split proportionally across intersecting hexes.
+- Returns the original hex grid with total estimated population per hex.
+
 ### `accessx.graph`
 - Download and preprocess OSM street networks (`build_network`).
 - Save/load graph nodes and edges (`save_graph`, `load_graph`).
