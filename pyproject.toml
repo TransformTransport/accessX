@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "accessx"
 version = "0.1.0"
-description = "Python tools for X-minute accessibility analysis and proximity-based urban planning."
+description = "Python tools for X-minute accessibility, hex-based population mapping, and proximity-based urban planning."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -24,6 +24,10 @@ keywords = [
   "osmnx",
   "network analysis",
   "geospatial",
+  "population",
+  "worldpop",
+  "raster",
+  "hexagons",
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -45,6 +49,7 @@ dependencies = [
   "numpy",
   "osmnx",
   "pandas",
+  "rasterio",
   "seaborn",
   "shapely",
   "tobler",

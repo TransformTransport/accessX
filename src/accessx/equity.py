@@ -23,11 +23,16 @@ def calculate_lorenz(
     properties: Iterable[str],
     df: pd.DataFrame,
     *,
+    weights: Optional[Union[str, Iterable[float], pd.Series]] = None,
     fillna_value: float = 0.0,
     clip_nonnegative: bool = True,
 ) -> Tuple[Dict[str, List[float]], Dict[str, List[float]], Dict[str, float], Dict[str, List[float]]]:
     """
     Compute Lorenz curve arrays and Gini index for each property.
+
+    Question answered
+    -----------------
+    How equally is accessibility distributed across locations or people?
 
     Parameters
     ----------
@@ -35,6 +40,10 @@ def calculate_lorenz(
         Accessibility columns to evaluate.
     df : DataFrame
         Input table.
+    weights : str | iterable[float] | Series, optional
+        Optional weights for population-based equity. If provided, the Lorenz
+        curve is computed over cumulative weight share rather than cumulative
+        location share.
     fillna_value : float, default 0.0
         Value used for missing entries.
     clip_nonnegative : bool, default True
@@ -54,6 +63,23 @@ def calculate_lorenz(
     if len(df) == 0:
         raise ValueError("df is empty.")
 
+    if isinstance(weights, str):
+        if weights not in df.columns:
+            raise ValueError(f"Weight column '{weights}' not found in DataFrame.")
+        weight_values = pd.to_numeric(df[weights], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+    elif weights is None:
+        weight_values = None
+    else:
+        weight_values = pd.to_numeric(pd.Series(weights), errors="coerce").fillna(0.0).to_numpy(dtype=float)
+        if len(weight_values) != len(df):
+            raise ValueError("weights must have the same length as df.")
+
+    if weight_values is not None:
+        if np.any(weight_values < 0):
+            raise ValueError("weights must be >= 0.")
+        if float(weight_values.sum()) <= 0:
+            raise ValueError("weights must sum to > 0.")
+
     A: Dict[str, List[float]] = {}
     P: Dict[str, List[float]] = {}
     gini: Dict[str, float] = {}
@@ -67,20 +93,40 @@ def calculate_lorenz(
         if clip_nonnegative:
             values = np.clip(values, 0, None)
 
-        sorted_values = np.sort(values)
-        sorted_vals[prop] = sorted_values.tolist()
+        if weight_values is None:
+            sorted_values = np.sort(values)
+            sorted_vals[prop] = sorted_values.tolist()
 
-        n = len(sorted_values)
-        cumulative_values = np.cumsum(sorted_values)
+            n = len(sorted_values)
+            cumulative_values = np.cumsum(sorted_values)
 
-        population_share = np.arange(0, n + 1) / n
-        if cumulative_values[-1] <= 0:
-            accessibility_share = np.zeros(n + 1, dtype=float)
-            gini_value = 0.0
+            population_share = np.arange(0, n + 1) / n
+            if cumulative_values[-1] <= 0:
+                accessibility_share = np.zeros(n + 1, dtype=float)
+                gini_value = 0.0
+            else:
+                accessibility_share = np.concatenate(([0.0], cumulative_values / cumulative_values[-1]))
+                area_under_curve = _integrate_trapezoid(accessibility_share, population_share)
+                gini_value = float(1 - 2 * area_under_curve)
         else:
-            accessibility_share = np.concatenate(([0.0], cumulative_values / cumulative_values[-1]))
-            area_under_curve = _integrate_trapezoid(accessibility_share, population_share)
-            gini_value = float(1 - 2 * area_under_curve)
+            order = np.argsort(values, kind="mergesort")
+            sorted_values = values[order]
+            sorted_weights = weight_values[order]
+            sorted_vals[prop] = sorted_values.tolist()
+
+            cumulative_weights = np.cumsum(sorted_weights)
+            population_share = np.concatenate(([0.0], cumulative_weights / cumulative_weights[-1]))
+            cumulative_weighted_values = np.cumsum(sorted_values * sorted_weights)
+
+            if cumulative_weighted_values[-1] <= 0:
+                accessibility_share = np.zeros(len(sorted_values) + 1, dtype=float)
+                gini_value = 0.0
+            else:
+                accessibility_share = np.concatenate(
+                    ([0.0], cumulative_weighted_values / cumulative_weighted_values[-1])
+                )
+                area_under_curve = _integrate_trapezoid(accessibility_share, population_share)
+                gini_value = float(1 - 2 * area_under_curve)
 
         P[prop] = population_share.tolist()
         A[prop] = accessibility_share.tolist()
@@ -103,6 +149,10 @@ def compute_sufficientarian_score(
 ) -> pd.DataFrame:
     """
     Compute sufficientarian score from explicit threshold sets.
+
+    Question answered
+    -----------------
+    What share of the selected conditions are met?
 
     Parameters
     ----------
@@ -191,6 +241,7 @@ def plot_lorenz_curves(
     *,
     df: pd.DataFrame,
     properties: Iterable[str],
+    weights: Optional[Union[str, Iterable[float], pd.Series]] = None,
     title: Optional[str] = None,
     show_gini_in_legend: bool = True,
     palette: str = "tab10",
@@ -200,12 +251,18 @@ def plot_lorenz_curves(
     """
     Plot Lorenz curves for multiple accessibility properties.
 
+    Question answered
+    -----------------
+    What does the inequality pattern look like visually?
+
     Parameters
     ----------
     df : DataFrame
         Input table.
     properties : iterable[str]
         Accessibility columns to plot.
+    weights : str | iterable[float] | Series, optional
+        Optional weights passed through to `calculate_lorenz`.
     title : str, optional
         Plot title. If None, defaults to "Lorenz Curves".
     show_gini_in_legend : bool, default True
@@ -232,7 +289,7 @@ def plot_lorenz_curves(
         ) from exc
 
     properties = list(properties)
-    A, P, gini, _ = calculate_lorenz(properties=properties, df=df)
+    A, P, gini, _ = calculate_lorenz(properties=properties, df=df, weights=weights)
 
     sns.set_theme(style="whitegrid", palette=palette)
     fig, ax = plt.subplots(figsize=figsize)
@@ -251,7 +308,7 @@ def plot_lorenz_curves(
     plot_title = title if title is not None else "Lorenz Curves"
 
     ax.set_title(plot_title)
-    ax.set_xlabel("Cumulative Share of Locations")
+    ax.set_xlabel("Cumulative Share of People" if weights is not None else "Cumulative Share of Locations")
     ax.set_ylabel("Cumulative Share of Accessibility")
     ax.legend(frameon=False)
     ax.grid(True, linestyle="--", alpha=0.5)
@@ -262,119 +319,7 @@ def plot_lorenz_curves(
     return fig, ax, gini
 
 
-def plot_gini_table(
-    *,
-    df: Optional[pd.DataFrame] = None,
-    properties: Optional[Iterable[str]] = None,
-    gini: Optional[Dict[str, float]] = None,
-    title: Optional[str] = None,
-    sort_desc: bool = True,
-    decimals: int = 3,
-    figsize: Optional[Tuple[float, float]] = None,
-    cmap: str = "YlOrRd",
-    save_path: Optional[Union[str, Path]] = None,
-):
-    """
-    Plot a formatted table with Gini indices.
 
-    You can either:
-    - pass `gini` directly, or
-    - pass `df` and `properties` to compute Gini first.
-
-    Returns
-    -------
-    (fig, ax, gini_df) : tuple
-        Matplotlib figure, axis, and table DataFrame with columns [metric, gini].
-    """
-    try:
-        import matplotlib.pyplot as plt
-        import matplotlib.cm as cm
-        import matplotlib.colors as mcolors
-    except ImportError as exc:
-        raise ImportError(
-            "plot_gini_table requires matplotlib. Install it with: pip install matplotlib"
-        ) from exc
-
-    if gini is None:
-        if df is None or properties is None:
-            raise ValueError("Provide either `gini`, or both `df` and `properties`.")
-        _, _, gini, _ = calculate_lorenz(properties=properties, df=df)
-    else:
-        gini = dict(gini)
-
-    if not gini:
-        raise ValueError("No Gini values available to plot.")
-
-    gini_df = pd.DataFrame(
-        {"metric": list(gini.keys()), "gini": [float(v) for v in gini.values()]}
-    )
-    gini_df = gini_df.sort_values("gini", ascending=not sort_desc).reset_index(drop=True)
-
-    n_rows = len(gini_df)
-    if figsize is None:
-        figsize = (8.0, max(2.4, 0.42 * n_rows + 1.4))
-
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.axis("off")
-
-    table_title = title if title is not None else "Gini Indices"
-    ax.set_title(table_title, pad=12)
-
-    display_df = gini_df.copy()
-    display_df["gini"] = display_df["gini"].round(decimals)
-
-    values = gini_df["gini"].to_numpy(dtype=float)
-    vmin = float(values.min())
-    vmax = float(values.max())
-    if abs(vmax - vmin) < 1e-12:
-        norm = mcolors.Normalize(vmin=0.0, vmax=1.0)
-        color_vals = np.full_like(values, 0.5, dtype=float)
-    else:
-        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
-        color_vals = values
-    colormap = cm.get_cmap(cmap)
-
-    cell_text = display_df.values.tolist()
-    table = ax.table(
-        cellText=cell_text,
-        colLabels=["Metric", "Gini"],
-        cellLoc="left",
-        colLoc="left",
-        loc="center",
-        colWidths=[0.62, 0.25],
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(11)
-    table.scale(1, 1.35)
-
-    # Header styling
-    for col in range(2):
-        header = table[0, col]
-        header.set_text_props(weight="bold", color="white")
-        header.set_facecolor("#2F3B52")
-        header.set_edgecolor("#2F3B52")
-
-    # Body styling + heat coloring on the Gini column
-    for row_idx in range(1, n_rows + 1):
-        metric_cell = table[row_idx, 0]
-        gini_cell = table[row_idx, 1]
-
-        metric_cell.set_edgecolor("#D5D8DC")
-        gini_cell.set_edgecolor("#D5D8DC")
-
-        if row_idx % 2 == 0:
-            metric_cell.set_facecolor("#F8F9FB")
-        else:
-            metric_cell.set_facecolor("white")
-
-        gini_color = colormap(norm(color_vals[row_idx - 1]))
-        gini_cell.set_facecolor(gini_color)
-        gini_cell.set_text_props(weight="bold")
-
-    if save_path is not None:
-        fig.savefig(save_path, dpi=300, bbox_inches="tight")
-
-    return fig, ax, gini_df
 
 
 def plot_sufficientarian_score(
@@ -395,6 +340,10 @@ def plot_sufficientarian_score(
     The figure includes:
     - score distribution (histogram)
     - attainment shares at selected score levels
+
+    Question answered
+    -----------------
+    How widespread is adequate accessibility?
 
     Parameters
     ----------

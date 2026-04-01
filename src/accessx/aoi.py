@@ -8,8 +8,6 @@ from shapely.geometry import box
 
 from accessx.io import save_gdf
 
-import tobler
-
 
 BBox = Tuple[float, float, float, float]  # (minx, miny, maxx, maxy)
 
@@ -128,6 +126,14 @@ def make_hex_grid(
     GeoDataFrame
         Hex grid with a `hex_id` column and geometry (if return_geoms=True), in EPSG:4326.
     """
+    try:
+        import tobler
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "make_hex_grid requires the 'tobler' package. Install accessx with its "
+            "geospatial dependencies before calling this function."
+        ) from exc
+
     aoi_in = aoi.to_crs(4326)
 
     hex_gdf = tobler.util.h3fy(

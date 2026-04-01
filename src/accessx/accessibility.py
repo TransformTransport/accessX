@@ -131,21 +131,17 @@ def count_accessible_pois(
     # -------------------------
     # 5) one route per hex + aggregate counts
     # -------------------------
-    # Start output with hex id + geometry, then add one count column per POI category.
     accessibility_counts = hexes[[id_col, "geometry"]].copy()
     for poi_category_name in poi_categories:
         accessibility_counts[f"count_{poi_category_name}"] = 0
 
-    # Normalize numeric params once outside the loop.
     max_cost_value = float(max_cost)
     max_graph_distance_value = float(max_distance_from_graph)
 
-    # Process each hex independently: snap -> route -> aggregate category counts.
     for hex_index, hex_row in hexes[[id_col, "geometry"]].iterrows():
         hex_geometry = hex_row.geometry
         hex_centroid_point = hex_geometry if hex_geometry.geom_type == "Point" else hex_geometry.centroid
 
-        # Snap hex centroid to the graph and skip hexes too far from the network.
         source_node_id, distance_from_hex_to_graph = _nearest_graph_node_and_distance(
             graph,
             hex_centroid_point.x,
@@ -154,7 +150,6 @@ def count_accessible_pois(
         if distance_from_hex_to_graph > max_graph_distance_value:
             continue
 
-        # One Dijkstra per hex, capped at max_cost.
         shortest_path_costs = nx.single_source_dijkstra_path_length(
             graph,
             source_node_id,
@@ -162,14 +157,12 @@ def count_accessible_pois(
             weight=cost_attr,
         )
 
-        # Sum POIs by category only on nodes reachable within max_cost.
         category_counts_for_hex = {poi_category_name: 0 for poi_category_name in poi_categories}
         for reachable_node_id in shortest_path_costs.keys():
             category_pairs = node_to_category_count_pairs.get(int(reachable_node_id), [])
             for poi_category_name, poi_count_on_node in category_pairs:
                 category_counts_for_hex[poi_category_name] += poi_count_on_node
 
-        # Write final counts into the output row for this hex.
         for poi_category_name in poi_categories:
             accessibility_counts.at[hex_index, f"count_{poi_category_name}"] = int(
                 category_counts_for_hex[poi_category_name]
@@ -314,7 +307,6 @@ def compute_nearest_poi_cost(
             weight=cost_attr,
         )
 
-        # Candidate lists from reachable nodes, split by category.
         reachable_poi_cost_pairs_by_category: Dict[str, List[Tuple[Union[int, float], Union[int, str]]]] = {
             poi_category_name: [] for poi_category_name in poi_categories
         }
@@ -328,7 +320,6 @@ def compute_nearest_poi_cost(
                 for poi_id in poi_ids:
                     reachable_poi_cost_pairs_by_category[poi_category_name].append((clean_cost, poi_id))
 
-        # Stable ordering by cost, then POI id as string for deterministic ties.
         for poi_category_name in poi_categories:
             category_pairs = reachable_poi_cost_pairs_by_category[poi_category_name]
             if not category_pairs:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import urlencode
@@ -21,6 +23,19 @@ NATURAL_EARTH_URL = (
 )
 
 
+def _download_progress(block_count: int, block_size: int, total_size: int) -> None:
+    downloaded_mb = (block_count * block_size) / (1024 * 1024)
+    if total_size > 0:
+        total_mb = total_size / (1024 * 1024)
+        percent = min(100.0, 100.0 * block_count * block_size / total_size)
+        print(
+            f"[accessx.population] Downloaded {downloaded_mb:.1f} / {total_mb:.1f} MB "
+            f"({percent:.1f}%)"
+        )
+    else:
+        print(f"[accessx.population] Downloaded {downloaded_mb:.1f} MB")
+
+
 def _pixel_polygon(transform, row: int, col: int):
     upper_left_x, upper_left_y = rasterio.transform.xy(transform, row, col, offset="ul")
     lower_right_x, lower_right_y = rasterio.transform.xy(transform, row, col, offset="lr")
@@ -30,6 +45,14 @@ def _pixel_polygon(transform, row: int, col: int):
         max(upper_left_x, lower_right_x),
         max(upper_left_y, lower_right_y),
     )
+
+
+def _validate_raster_file(raster_path: Union[str, Path]) -> None:
+    """
+    Open the raster and force a full-band read to catch truncated TIFFs.
+    """
+    with rasterio.open(raster_path) as src:
+        _ = src.read(1, masked=True)
 
 
 def _get_input_geometry(
@@ -85,7 +108,6 @@ def get_worldpop_raster(
     hexes: Optional[gpd.GeoDataFrame] = None,
     year: int,
     clip: bool = True,
-    output_dir: Union[str, Path] = "cache/worldpop",
     save_path: Optional[Union[str, Path]] = None,
 ) -> Path:
     """
@@ -96,9 +118,11 @@ def get_worldpop_raster(
     """
     geometry_gdf = _get_input_geometry(aoi=aoi, hexes=hexes)
     iso3 = infer_country_from_geometry(aoi=aoi, hexes=hexes)["iso3"]
+    print(f"[accessx.population] Resolved country: {iso3}")
 
     # Resolve the matching WorldPop country raster for the requested year.
     metadata_url = f"{WORLDPOP_REST_ROOT}/pop/wpgp?{urlencode({'iso3': iso3})}"
+    print(f"[accessx.population] Requesting metadata for year {year}...")
     with urlopen(metadata_url) as response:
         payload = json.load(response)
     matches = [entry for entry in payload.get("data", []) if str(entry.get("popyear")) == str(year)]
@@ -109,41 +133,66 @@ def get_worldpop_raster(
         raise ValueError(f"WorldPop metadata for {iso3} {year} did not include a download URL.")
     source_url = str(files[0])
 
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Download the source raster fresh for each call to avoid stale cache issues.
+    with tempfile.TemporaryDirectory(prefix="accessx_worldpop_") as tmp_dir:
+        tmp_dir_path = Path(tmp_dir)
+        country_raster_path = tmp_dir_path / f"worldpop_{iso3.lower()}_{year}.tif"
+        print(f"[accessx.population] Downloading raster to {country_raster_path}...")
+        urlretrieve(source_url, country_raster_path, reporthook=_download_progress)
+        _validate_raster_file(country_raster_path)
+        print("[accessx.population] Download complete and validated.")
 
-    country_raster_path = output_dir / f"worldpop_{iso3.lower()}_{year}.tif"
-    if not country_raster_path.exists():
-        urlretrieve(source_url, country_raster_path)
+        if not clip:
+            if save_path is None:
+                temp_file = tempfile.NamedTemporaryFile(
+                    prefix=f"worldpop_{iso3.lower()}_{year}_",
+                    suffix=".tif",
+                    delete=False,
+                )
+                temp_file.close()
+                final_raster_path = Path(temp_file.name)
+            else:
+                final_raster_path = Path(save_path)
+                final_raster_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not clip:
-        return country_raster_path
+            shutil.copyfile(country_raster_path, final_raster_path)
+            print(f"[accessx.population] Saved raster to {final_raster_path}")
+            return final_raster_path
 
-    clipped_raster_path = (
-        Path(save_path) if save_path is not None else output_dir / f"worldpop_{iso3.lower()}_{year}_clipped.tif"
-    )
+        print("[accessx.population] Clipping raster to input geometry...")
+        with rasterio.open(country_raster_path) as src:
+            geometry_in_raster_crs = geometry_gdf.to_crs(src.crs)
+            clipped_data, clipped_transform = mask(
+                src,
+                [mapping(geometry_in_raster_crs.geometry.union_all())],
+                crop=True,
+            )
+            clipped_meta = src.meta.copy()
+            clipped_meta.update(
+                {
+                    "height": clipped_data.shape[1],
+                    "width": clipped_data.shape[2],
+                    "transform": clipped_transform,
+                }
+            )
 
-    # Clip the country raster down to the supplied AOI or hex extent.
-    with rasterio.open(country_raster_path) as src:
-        geometry_in_raster_crs = geometry_gdf.to_crs(src.crs)
-        clipped_data, clipped_transform = mask(
-            src,
-            [mapping(geometry_in_raster_crs.geometry.union_all())],
-            crop=True,
-        )
-        clipped_meta = src.meta.copy()
-        clipped_meta.update(
-            {
-                "height": clipped_data.shape[1],
-                "width": clipped_data.shape[2],
-                "transform": clipped_transform,
-            }
-        )
+        if save_path is None:
+            temp_file = tempfile.NamedTemporaryFile(
+                prefix=f"worldpop_{iso3.lower()}_{year}_clipped_",
+                suffix=".tif",
+                delete=False,
+            )
+            temp_file.close()
+            final_raster_path = Path(temp_file.name)
+        else:
+            final_raster_path = Path(save_path)
+            final_raster_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with rasterio.open(clipped_raster_path, "w", **clipped_meta) as dst:
-        dst.write(clipped_data)
+        with rasterio.open(final_raster_path, "w", **clipped_meta) as dst:
+            dst.write(clipped_data)
 
-    return clipped_raster_path
+        print(f"[accessx.population] Saved clipped raster to {final_raster_path}")
+        return final_raster_path
 
 
 def raster_to_population_grid(
