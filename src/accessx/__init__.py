@@ -17,6 +17,12 @@ from accessx.graph import build_network, load_graph, save_graph
 from accessx.io import read_gdf, save_gdf
 from accessx.isochrone import calculate_isochrones
 from accessx.poi import get_pois_osm
+from accessx.population import (
+    get_worldpop_raster,
+    infer_country_from_geometry,
+    map_population_to_hexes,
+    raster_to_population_grid,
+)
 
 __all__ = [
     "add_edge_cost",
@@ -31,9 +37,13 @@ __all__ = [
     "compute_sufficientarian_score",
     "count_accessible_pois",
     "get_pois_osm",
+    "get_worldpop_raster",
+    "infer_country_from_geometry",
     "load_aoi",
     "load_graph",
     "make_hex_grid",
+    "map_population_to_hexes",
+    "raster_to_population_grid",
     "plot_gini_table",
     "plot_lorenz_curves",
     "plot_sufficientarian_score",
