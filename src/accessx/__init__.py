@@ -1,4 +1,5 @@
 from accessx.accessibility import (
+    compute_co_accessibility,
     compute_2sfca_accessibility,
     compute_hansen_accessibility,
     compute_nearest_poi_cost,
@@ -9,7 +10,6 @@ from accessx.cost import add_edge_cost, add_slope_based_time, add_time_cost_cons
 from accessx.equity import (
     calculate_lorenz,
     compute_sufficientarian_score,
-    plot_gini_table,
     plot_lorenz_curves,
     plot_sufficientarian_score,
 )
@@ -20,6 +20,7 @@ from accessx.poi import get_pois_osm
 from accessx.population import (
     get_worldpop_raster,
     infer_country_from_geometry,
+    map_population_grid_to_hexes,
     map_population_to_hexes,
     raster_to_population_grid,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "build_network",
     "calculate_isochrones",
     "calculate_lorenz",
+    "compute_co_accessibility",
     "compute_2sfca_accessibility",
     "compute_hansen_accessibility",
     "compute_nearest_poi_cost",
@@ -42,6 +44,7 @@ __all__ = [
     "load_aoi",
     "load_graph",
     "make_hex_grid",
+    "map_population_grid_to_hexes",
     "map_population_to_hexes",
     "raster_to_population_grid",
     "plot_gini_table",
