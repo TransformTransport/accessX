@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Literal, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union
 
 import geopandas as gpd
 import networkx as nx
@@ -585,6 +585,243 @@ def compute_hansen_accessibility(
 
     hansen_scores = hansen_scores.to_crs(original_hex_crs)
     return gpd.GeoDataFrame(hansen_scores, geometry="geometry", crs=original_hex_crs)
+
+
+def compute_co_accessibility(
+    graph: nx.MultiDiGraph,
+    hexes: gpd.GeoDataFrame,
+    pois: gpd.GeoDataFrame,
+    *,
+    max_cost: Union[int, float],
+    cost_attr: str,
+    population_groups: Union[str, Iterable[str]],
+    id_col: str = "hex_id",
+    poi_id_col: str = "id",
+    category_col: str = "category",
+    max_distance_from_graph: float = 200.0,
+    approach: Literal["cumulative", "hansen"] = "cumulative",
+    beta: float = 0.15,
+) -> gpd.GeoDataFrame:
+    """
+    Compute co-accessibility for each POI.
+
+    Question answered
+    -----------------
+    How many people from each population group can access the same POI?
+
+    Parameters
+    ----------
+    graph : nx.MultiDiGraph
+        Projected network graph with CRS in graph.graph["crs"].
+        Must include numeric edge attribute `cost_attr`.
+    hexes : GeoDataFrame
+        Hexes with columns `[id_col, geometry]` and one or more population group columns.
+        If geometry is polygonal, centroid is used for graph snapping.
+    pois : GeoDataFrame
+        POIs with at least `[poi_id_col, geometry]`.
+        If `category_col` exists, it is preserved in the output.
+        If geometry is polygonal, centroid is used for graph snapping.
+    max_cost : int | float
+        Maximum travel cost cutoff for routing. Must be > 0.
+    cost_attr : str
+        Edge weight attribute used in shortest path computation.
+    population_groups : str | iterable[str]
+        Population column(s) in `hexes` to aggregate around each POI.
+    id_col : str, default "hex_id"
+        Hex identifier column in `hexes`.
+    poi_id_col : str, default "id"
+        POI identifier column in `pois`.
+    category_col : str, default "category"
+        Optional POI category column. Preserved if present in `pois`.
+    max_distance_from_graph : float, default 200.0
+        Maximum allowed snapping distance (graph CRS units, typically meters)
+        from each hex centroid and POI to the nearest graph node. Must be > 0.
+    approach : {"cumulative", "hansen"}, default "cumulative"
+        Co-accessibility calculation approach:
+        - "cumulative": full reachable population within `max_cost`
+        - "hansen": distance-decayed reachable population using `exp(-beta * cost)`
+    beta : float, default 0.15
+        Exponential decay parameter used only when `approach="hansen"`.
+
+    Returns
+    -------
+    GeoDataFrame
+        One row per POI with:
+        [poi_id_col, category_col (if present), geometry, coacc_<group1>, ...]
+        Geometry is in the original POI CRS.
+    """
+    # -------------------------
+    # 1) validate inputs
+    # -------------------------
+    if hexes is None or len(hexes) == 0:
+        raise ValueError("hexes is empty.")
+    if pois is None or len(pois) == 0:
+        raise ValueError("pois is empty.")
+    if hexes.crs is None:
+        raise ValueError("hexes must have a CRS.")
+    if pois.crs is None:
+        raise ValueError("pois must have a CRS.")
+    if graph.graph.get("crs") is None:
+        raise ValueError("Graph has no CRS in graph.graph['crs']. Project graph first.")
+    if id_col not in hexes.columns:
+        raise ValueError(f"hexes missing required id column '{id_col}'.")
+    if poi_id_col not in pois.columns:
+        raise ValueError(f"pois missing required POI id column '{poi_id_col}'.")
+    if max_cost <= 0:
+        raise ValueError("max_cost must be > 0.")
+    if max_distance_from_graph <= 0:
+        raise ValueError("max_distance_from_graph must be > 0.")
+    if approach not in {"cumulative", "hansen"}:
+        raise ValueError("approach must be either 'cumulative' or 'hansen'.")
+    if approach == "hansen" and beta <= 0:
+        raise ValueError("beta must be > 0 when approach='hansen'.")
+
+    graph_has_cost_attribute = any(
+        cost_attr in edge_data for _, _, _, edge_data in graph.edges(keys=True, data=True)
+    )
+    if not graph_has_cost_attribute:
+        raise ValueError(f"Edge cost attribute '{cost_attr}' not found on graph edges.")
+
+    if isinstance(population_groups, str):
+        population_group_names = [population_groups]
+    else:
+        population_group_names = [str(group_name) for group_name in population_groups]
+    if not population_group_names:
+        raise ValueError("population_groups is empty.")
+    if len(set(population_group_names)) != len(population_group_names):
+        raise ValueError("population_groups contains duplicates.")
+
+    for population_group_name in population_group_names:
+        if population_group_name not in hexes.columns:
+            raise ValueError(f"hexes missing required population group column '{population_group_name}'.")
+
+    # -------------------------
+    # 2) reproject to graph CRS
+    # -------------------------
+    graph_crs = graph.graph["crs"]
+    original_poi_crs = pois.crs
+
+    if hexes.crs != graph_crs:
+        hexes = hexes.to_crs(graph_crs)
+    if pois.crs != graph_crs:
+        pois = pois.to_crs(graph_crs)
+
+    # -------------------------
+    # 3) prepare and snap hexes
+    # -------------------------
+    hex_keep_columns = [id_col, "geometry"] + population_group_names
+    hexes = hexes[hex_keep_columns].copy()
+    hexes = hexes[hexes["geometry"].notna()].copy()
+    if len(hexes) == 0:
+        raise ValueError("hexes has no valid geometries.")
+
+    for population_group_name in population_group_names:
+        hexes[population_group_name] = pd.to_numeric(hexes[population_group_name], errors="coerce").fillna(0.0)
+        if (hexes[population_group_name] < 0).any():
+            raise ValueError(f"Population group '{population_group_name}' must be >= 0.")
+
+    hex_centroid_points = hexes["geometry"].apply(lambda geom: geom if geom.geom_type == "Point" else geom.centroid)
+    hex_x_coords = hex_centroid_points.x.tolist()
+    hex_y_coords = hex_centroid_points.y.tolist()
+    hexes["nearest_node"] = pd.Series(ox.distance.nearest_nodes(graph, hex_x_coords, hex_y_coords)).astype("int64")
+
+    nearest_node_x = hexes["nearest_node"].map(lambda node_id: graph.nodes[int(node_id)]["x"])
+    nearest_node_y = hexes["nearest_node"].map(lambda node_id: graph.nodes[int(node_id)]["y"])
+    hexes["distance_from_graph"] = ox.distance.euclidean(
+        hex_centroid_points.y,
+        hex_centroid_points.x,
+        nearest_node_y,
+        nearest_node_x,
+    )
+
+    valid_hexes = hexes[hexes["distance_from_graph"] <= float(max_distance_from_graph)].copy()
+    valid_hexes["nearest_node"] = valid_hexes["nearest_node"].astype("int64")
+
+    node_population_group_totals = (
+        valid_hexes.groupby("nearest_node")[population_group_names]
+        .sum()
+        .reset_index()
+    )
+
+    node_to_population_group_totals: Dict[int, Dict[str, float]] = {}
+    for totals_row in node_population_group_totals.itertuples(index=False):
+        node_id = int(totals_row.nearest_node)
+        node_to_population_group_totals[node_id] = {
+            population_group_name: float(getattr(totals_row, population_group_name))
+            for population_group_name in population_group_names
+        }
+
+    # -------------------------
+    # 4) prepare and snap POIs
+    # -------------------------
+    poi_keep_columns = [poi_id_col, "geometry"]
+    keep_category = category_col in pois.columns
+    if keep_category:
+        poi_keep_columns.append(category_col)
+
+    pois_out = pois[poi_keep_columns].copy()
+    pois_out = pois_out[pois_out["geometry"].notna()].copy()
+    if len(pois_out) == 0:
+        raise ValueError("pois has no valid geometries.")
+
+    pois_work = pois_out.to_crs(graph_crs) if pois_out.crs != graph_crs else pois_out.copy()
+    poi_points = pois_work["geometry"].apply(lambda geom: geom if geom.geom_type == "Point" else geom.centroid)
+    poi_x_coords = poi_points.x.tolist()
+    poi_y_coords = poi_points.y.tolist()
+    pois_work["nearest_node"] = pd.Series(ox.distance.nearest_nodes(graph, poi_x_coords, poi_y_coords)).astype("int64")
+
+    nearest_poi_node_x = pois_work["nearest_node"].map(lambda node_id: graph.nodes[int(node_id)]["x"])
+    nearest_poi_node_y = pois_work["nearest_node"].map(lambda node_id: graph.nodes[int(node_id)]["y"])
+    pois_work["distance_from_graph"] = ox.distance.euclidean(
+        poi_points.y,
+        poi_points.x,
+        nearest_poi_node_y,
+        nearest_poi_node_x,
+    )
+
+    # -------------------------
+    # 5) one route per POI + aggregate accessible population
+    # -------------------------
+    for population_group_name in population_group_names:
+        pois_out[f"coacc_{population_group_name}"] = 0.0
+
+    max_cost_value = float(max_cost)
+
+    for poi_index, poi_row in pois_work.iterrows():
+        if float(poi_row.distance_from_graph) > float(max_distance_from_graph):
+            continue
+
+        source_node_id = int(poi_row.nearest_node)
+        shortest_path_costs = nx.single_source_dijkstra_path_length(
+            graph,
+            source_node_id,
+            cutoff=max_cost_value,
+            weight=cost_attr,
+        )
+
+        accessible_population = {population_group_name: 0.0 for population_group_name in population_group_names}
+        for reachable_node_id, route_cost in shortest_path_costs.items():
+            population_totals_on_node = node_to_population_group_totals.get(int(reachable_node_id))
+            if population_totals_on_node is None:
+                continue
+
+            if approach == "cumulative":
+                decay_value = 1.0
+            else:
+                decay_value = math.exp(-float(beta) * float(route_cost))
+
+            for population_group_name in population_group_names:
+                accessible_population[population_group_name] += (
+                    float(population_totals_on_node[population_group_name]) * decay_value
+                )
+
+        for population_group_name in population_group_names:
+            pois_out.at[poi_index, f"coacc_{population_group_name}"] = float(
+                accessible_population[population_group_name]
+            )
+
+    pois_out = pois_out.to_crs(original_poi_crs)
+    return gpd.GeoDataFrame(pois_out, geometry="geometry", crs=original_poi_crs)
 
 
 def _compute_decay_value(

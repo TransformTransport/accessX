@@ -4,12 +4,13 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 from urllib.parse import urlencode
 from urllib.request import urlopen, urlretrieve
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import rasterio
 from rasterio.mask import mask
 from shapely.geometry import box, mapping
@@ -226,61 +227,84 @@ def raster_to_population_grid(
         return gpd.GeoDataFrame(records, geometry="geometry", crs=src.crs)
 
 
-def map_population_to_hexes(
+def _normalize_population_cols(
+    *,
+    population_col: Optional[str] = None,
+    population_cols: Optional[Union[str, Iterable[str]]] = None,
+) -> list[str]:
+    if population_cols is None:
+        if population_col is None:
+            raise ValueError("Provide `population_col` or `population_cols`.")
+        return [str(population_col)]
+
+    if isinstance(population_cols, str):
+        normalized = [population_cols]
+    else:
+        normalized = [str(col_name) for col_name in population_cols]
+
+    if not normalized:
+        raise ValueError("population_cols is empty.")
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("population_cols contains duplicates.")
+    return normalized
+
+
+def map_population_grid_to_hexes(
     hexes: gpd.GeoDataFrame,
-    population_data: Union[str, Path, gpd.GeoDataFrame],
+    population_grid: gpd.GeoDataFrame,
     *,
     metric_crs: Union[int, str],
     id_col: str = "hex_id",
-    band: int = 1,
     population_col: str = "population",
+    population_cols: Optional[Union[str, Iterable[str]]] = None,
     save_path: Optional[Union[str, Path]] = None,
 ) -> gpd.GeoDataFrame:
     """
-    Allocate raster population totals to hexes using area-weighted overlap.
+    Allocate population-grid totals to hexes using area-weighted overlap.
 
-    `population_data` can be either a raster path or a GeoDataFrame of
-    population-cell polygons such as the output of `raster_to_population_grid`.
+    This is the generic population-mapping function for vector population grids,
+    such as raster-derived cells or datasets like CBS 100x100m grids.
     """
     if hexes is None or len(hexes) == 0:
         raise ValueError("hexes is empty.")
+    if population_grid is None or len(population_grid) == 0:
+        raise ValueError("population_grid is empty.")
     if hexes.crs is None:
         raise ValueError("hexes must have a CRS.")
+    if population_grid.crs is None:
+        raise ValueError("population_grid must have a CRS.")
     if id_col not in hexes.columns:
         raise ValueError(f"hexes missing required id column '{id_col}'.")
     if metric_crs is None:
         raise ValueError("metric_crs must be provided.")
 
+    population_col_names = _normalize_population_cols(
+        population_col=population_col,
+        population_cols=population_cols,
+    )
+    for population_col_name in population_col_names:
+        if population_col_name not in population_grid.columns:
+            raise ValueError(
+                f"population_grid missing required population column '{population_col_name}'."
+            )
+
     output = hexes.copy()
-    output[population_col] = 0.0
+    for population_col_name in population_col_names:
+        output[population_col_name] = 0.0
 
-    # Accept either a raster path or a pre-built population grid.
-    if isinstance(population_data, gpd.GeoDataFrame):
-        cells = population_data.copy()
-    else:
-        cells = raster_to_population_grid(population_data, band=band, population_col=population_col)
-
-    if len(cells) == 0:
-        if save_path is not None:
-            save_gdf(output, save_path)
-        return output
-    if cells.crs is None:
-        raise ValueError("population_data must have a CRS.")
-    if population_col not in cells.columns:
-        raise ValueError(f"population_data missing required column '{population_col}'.")
-
-    # Keep only the overlapping parts to avoid unnecessary overlay work.
-    valid_hexes = hexes.to_crs(cells.crs)
+    # Keep only overlapping geometries before running the overlay.
+    valid_hexes = hexes.to_crs(population_grid.crs)
     valid_hexes = valid_hexes[valid_hexes.geometry.notna()].copy()
     if len(valid_hexes) == 0:
         raise ValueError("hexes has no valid geometries.")
 
-    valid_hexes = valid_hexes[valid_hexes.geometry.intersects(box(*cells.total_bounds))].copy()
+    valid_hexes = valid_hexes[valid_hexes.geometry.intersects(box(*population_grid.total_bounds))].copy()
     if len(valid_hexes) == 0:
         if save_path is not None:
             save_gdf(output, save_path)
         return output
 
+    cells = population_grid.copy()
     cells = cells[cells.geometry.notna()].copy()
     cells = cells[cells.geometry.intersects(box(*valid_hexes.total_bounds))].copy()
     if len(cells) == 0:
@@ -290,10 +314,16 @@ def map_population_to_hexes(
 
     # Reproject to a metric CRS so area ratios are meaningful.
     hexes_metric = valid_hexes[[id_col, "geometry"]].to_crs(metric_crs)
-    cells_metric = cells[[population_col, "geometry"]].to_crs(metric_crs)
+    cells_metric = cells[population_col_names + ["geometry"]].to_crs(metric_crs)
+    for population_col_name in population_col_names:
+        cells_metric[population_col_name] = pd.to_numeric(
+            cells_metric[population_col_name], errors="coerce"
+        ).fillna(0.0)
+        if (cells_metric[population_col_name] < 0).any():
+            raise ValueError(f"Population column '{population_col_name}' must be >= 0.")
+
     cells_metric["cell_area"] = cells_metric.geometry.area
     cells_metric = cells_metric[cells_metric["cell_area"] > 0].copy()
-
     if len(cells_metric) == 0:
         if save_path is not None:
             save_gdf(output, save_path)
@@ -310,7 +340,6 @@ def map_population_to_hexes(
             save_gdf(output, save_path)
         return output
 
-    # Split each cell's population across hexes by overlap area.
     overlaps["overlap_area"] = overlaps.geometry.area
     overlaps = overlaps[overlaps["overlap_area"] > 0].copy()
     if len(overlaps) == 0:
@@ -318,15 +347,62 @@ def map_population_to_hexes(
             save_gdf(output, save_path)
         return output
 
-    overlaps["allocated_population"] = (
-        overlaps[population_col] * overlaps["overlap_area"] / overlaps["cell_area"]
-    )
-
-    # Sum the allocated population back to one value per hex.
-    population_by_hex = overlaps.groupby(id_col)["allocated_population"].sum()
-    output[population_col] = output[id_col].map(population_by_hex).fillna(0.0).astype(float)
+    for population_col_name in population_col_names:
+        overlaps[f"allocated_{population_col_name}"] = (
+            overlaps[population_col_name] * overlaps["overlap_area"] / overlaps["cell_area"]
+        )
+        population_by_hex = overlaps.groupby(id_col)[f"allocated_{population_col_name}"].sum()
+        output[population_col_name] = output[id_col].map(population_by_hex).fillna(0.0).astype(float)
 
     if save_path is not None:
         save_gdf(output, save_path)
 
     return output
+
+
+def map_population_to_hexes(
+    hexes: gpd.GeoDataFrame,
+    population_data: Union[str, Path, gpd.GeoDataFrame],
+    *,
+    metric_crs: Union[int, str],
+    id_col: str = "hex_id",
+    band: int = 1,
+    population_col: str = "population",
+    population_cols: Optional[Union[str, Iterable[str]]] = None,
+    save_path: Optional[Union[str, Path]] = None,
+) -> gpd.GeoDataFrame:
+    """
+    Allocate raster population totals to hexes using area-weighted overlap.
+
+    `population_data` can be either a raster path or a GeoDataFrame of
+    population-cell polygons such as the output of `raster_to_population_grid`.
+    """
+    population_col_names = _normalize_population_cols(
+        population_col=population_col,
+        population_cols=population_cols,
+    )
+
+    # Accept either a raster path or a pre-built population grid.
+    if isinstance(population_data, gpd.GeoDataFrame):
+        cells = population_data.copy()
+    else:
+        if len(population_col_names) != 1:
+            raise ValueError(
+                "Raster input supports a single population column. "
+                "Use `population_cols` only with a population-grid GeoDataFrame."
+            )
+        cells = raster_to_population_grid(
+            population_data,
+            band=band,
+            population_col=population_col_names[0],
+        )
+
+    return map_population_grid_to_hexes(
+        hexes,
+        cells,
+        metric_crs=metric_crs,
+        id_col=id_col,
+        population_col=population_col_names[0],
+        population_cols=population_col_names,
+        save_path=save_path,
+    )
