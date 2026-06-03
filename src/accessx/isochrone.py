@@ -301,12 +301,14 @@ def calculate_isochrones(
             thr_str = _format_threshold(t)
             fname = f"{base_name}_{method}_{cost_attr}_{thr_str}.csv"
 
-            out_csv = gdf_res[[id_col, "geometry", colnames[t]]].copy()
+            # CSV stores geometries as WKT strings, so use a plain DataFrame before
+            # replacing the active GeoDataFrame geometry column.
+            out_csv = pd.DataFrame(gdf_res[[id_col, "geometry", colnames[t]]].copy())
 
             # convert geometry columns to WKT for CSV
             out_csv["geometry"] = out_csv["geometry"].apply(lambda g: g.wkt if g is not None else None)
             out_csv[colnames[t]] = out_csv[colnames[t]].apply(lambda g: g.wkt if g is not None else None)
 
-            pd.DataFrame(out_csv).to_csv(save_dir_path / fname, index=False)
+            out_csv.to_csv(save_dir_path / fname, index=False)
 
     return gdf_res
