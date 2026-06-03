@@ -16,7 +16,7 @@ from accessx.equity import (
 from accessx.graph import build_network, load_graph, save_graph
 from accessx.io import read_gdf, save_gdf
 from accessx.isochrone import calculate_isochrones
-from accessx.poi import get_pois_osm
+from accessx.poi import POIQueryError, get_pois_osm
 from accessx.population import (
     get_worldpop_raster,
     infer_country_from_geometry,
@@ -50,6 +50,7 @@ __all__ = [
     "plot_gini_table",
     "plot_lorenz_curves",
     "plot_sufficientarian_score",
+    "POIQueryError",
     "read_gdf",
     "save_gdf",
     "save_graph",
