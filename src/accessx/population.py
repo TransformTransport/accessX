@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Iterable, Optional, Union
 from urllib.parse import urlencode
@@ -24,17 +25,37 @@ NATURAL_EARTH_URL = (
 )
 
 
-def _download_progress(block_count: int, block_size: int, total_size: int) -> None:
-    downloaded_mb = (block_count * block_size) / (1024 * 1024)
-    if total_size > 0:
-        total_mb = total_size / (1024 * 1024)
-        percent = min(100.0, 100.0 * block_count * block_size / total_size)
-        print(
-            f"[accessx.population] Downloaded {downloaded_mb:.1f} / {total_mb:.1f} MB "
-            f"({percent:.1f}%)"
+def _make_download_progress(show_progress: bool):
+    if not show_progress:
+        return None, None
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        warnings.warn(
+            "show_progress=True requires tqdm. Install tqdm or set show_progress=False.",
+            RuntimeWarning,
+            stacklevel=2,
         )
-    else:
-        print(f"[accessx.population] Downloaded {downloaded_mb:.1f} MB")
+        return None, None
+
+    progress_bar = tqdm(
+        desc="Downloading WorldPop raster",
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+    )
+    downloaded_bytes = 0
+
+    def reporthook(block_count: int, block_size: int, total_size: int) -> None:
+        nonlocal downloaded_bytes
+        if total_size > 0 and progress_bar.total != total_size:
+            progress_bar.total = total_size
+            progress_bar.refresh()
+        current_bytes = block_count * block_size
+        progress_bar.update(max(0, current_bytes - downloaded_bytes))
+        downloaded_bytes = current_bytes
+
+    return reporthook, progress_bar
 
 
 def _pixel_polygon(transform, row: int, col: int):
@@ -110,12 +131,18 @@ def get_worldpop_raster(
     year: int,
     clip: bool = True,
     save_path: Optional[Union[str, Path]] = None,
+    show_progress: bool = True,
 ) -> Path:
     """
     Download a WorldPop raster for the country covering the supplied geometry.
 
     If `clip=True`, the downloaded country raster is clipped to the `aoi` or
     `hexes` extent and the clipped raster path is returned.
+
+    Parameters
+    ----------
+    show_progress : bool, default True
+        If True, show a progress bar while downloading the WorldPop raster.
     """
     geometry_gdf = _get_input_geometry(aoi=aoi, hexes=hexes)
     iso3 = infer_country_from_geometry(aoi=aoi, hexes=hexes)["iso3"]
@@ -139,7 +166,12 @@ def get_worldpop_raster(
         tmp_dir_path = Path(tmp_dir)
         country_raster_path = tmp_dir_path / f"worldpop_{iso3.lower()}_{year}.tif"
         print(f"[accessx.population] Downloading raster to {country_raster_path}...")
-        urlretrieve(source_url, country_raster_path, reporthook=_download_progress)
+        reporthook, progress_bar = _make_download_progress(show_progress)
+        try:
+            urlretrieve(source_url, country_raster_path, reporthook=reporthook)
+        finally:
+            if progress_bar is not None:
+                progress_bar.close()
         _validate_raster_file(country_raster_path)
         print("[accessx.population] Download complete and validated.")
 
