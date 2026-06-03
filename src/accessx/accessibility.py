@@ -1,12 +1,35 @@
 from __future__ import annotations
 
 import math
+import warnings
 from typing import Dict, Iterable, List, Literal, Optional, Tuple, Union
 
 import geopandas as gpd
 import networkx as nx
 import osmnx as ox
 import pandas as pd
+
+
+def _iter_with_progress(
+    iterable,
+    *,
+    show_progress: bool,
+    desc: str,
+    total: Optional[int] = None,
+    unit: str = "item",
+):
+    if not show_progress:
+        return iterable
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        warnings.warn(
+            "show_progress=True requires tqdm. Install tqdm or set show_progress=False.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return iterable
+    return tqdm(iterable, desc=desc, total=total, unit=unit)
 
 
 def _nearest_graph_node_and_distance(
@@ -35,6 +58,7 @@ def count_accessible_pois(
     id_col: str = "hex_id",
     category_col: str = "category",
     max_distance_from_graph: float = 200.0,
+    show_progress: bool = False,
 ) -> gpd.GeoDataFrame:
     """
     Count reachable POIs by category for each hex using direct graph routing costs.
@@ -53,6 +77,11 @@ def count_accessible_pois(
         One row per hex with:
         [id_col, geometry, count_<category1>, count_<category2>, ...]
         Geometry is in the original hexes CRS.
+
+    Other Parameters
+    ----------------
+    show_progress : bool, default False
+        If True, show progress while routing from hexes.
     """
     # -------------------------
     # 1) validate inputs
@@ -138,7 +167,14 @@ def count_accessible_pois(
     max_cost_value = float(max_cost)
     max_graph_distance_value = float(max_distance_from_graph)
 
-    for hex_index, hex_row in hexes[[id_col, "geometry"]].iterrows():
+    hex_rows = hexes[[id_col, "geometry"]].iterrows()
+    for hex_index, hex_row in _iter_with_progress(
+        hex_rows,
+        show_progress=show_progress,
+        desc="Counting accessible POIs",
+        total=len(hexes),
+        unit="hex",
+    ):
         hex_geometry = hex_row.geometry
         hex_centroid_point = hex_geometry if hex_geometry.geom_type == "Point" else hex_geometry.centroid
 
@@ -192,6 +228,7 @@ def compute_nearest_poi_cost(
     max_distance_from_graph: float = 200.0,
     number_of_nearest: Optional[int] = None,
     output: Literal["list", "long", "wide"] = "list",
+    show_progress: bool = False,
 ) -> Union[gpd.GeoDataFrame, pd.DataFrame]:
     """
     Compute nearest reachable POI cost for each hex using direct graph routing.
@@ -206,6 +243,11 @@ def compute_nearest_poi_cost(
     - output="list" keeps list-of-tuples columns (default)
     - output="long" returns one row per (hex, category, rank)
     - output="wide" returns one row per hex with nearest_cost_* and nearest_poi_* columns
+
+    Parameters
+    ----------
+    show_progress : bool, default False
+        If True, show progress while routing from hexes.
     """
     # -------------------------
     # 1) validate inputs
@@ -288,7 +330,14 @@ def compute_nearest_poi_cost(
     max_graph_distance_value = float(max_distance_from_graph)
     nearest_limit = 1 if number_of_nearest is None else int(number_of_nearest)
 
-    for hex_index, hex_row in hexes[[id_col, "geometry"]].iterrows():
+    hex_rows = hexes[[id_col, "geometry"]].iterrows()
+    for hex_index, hex_row in _iter_with_progress(
+        hex_rows,
+        show_progress=show_progress,
+        desc="Computing nearest POIs",
+        total=len(hexes),
+        unit="hex",
+    ):
         hex_geometry = hex_row.geometry
         hex_centroid_point = hex_geometry if hex_geometry.geom_type == "Point" else hex_geometry.centroid
 
@@ -381,6 +430,7 @@ def compute_hansen_accessibility(
     default_poi_weight: float = 1.0,
     max_distance_from_graph: float = 200.0,
     beta: float = 0.15,
+    show_progress: bool = False,
 ) -> gpd.GeoDataFrame:
     """
     Compute Hansen accessibility score for each hex using direct graph routing.
@@ -430,6 +480,8 @@ def compute_hansen_accessibility(
     beta : float, default 0.15
         Exponential decay parameter in `exp(-beta * cost)`. Must be > 0.
         Higher values produce faster distance decay.
+    show_progress : bool, default False
+        If True, show progress while routing from hexes.
 
     Output columns:
     - hansen_<category> for each POI category
@@ -550,7 +602,14 @@ def compute_hansen_accessibility(
     max_cost_value = float(max_cost)
     max_graph_distance_value = float(max_distance_from_graph)
 
-    for hex_index, hex_row in hexes[[id_col, "geometry"]].iterrows():
+    hex_rows = hexes[[id_col, "geometry"]].iterrows()
+    for hex_index, hex_row in _iter_with_progress(
+        hex_rows,
+        show_progress=show_progress,
+        desc="Computing Hansen accessibility",
+        total=len(hexes),
+        unit="hex",
+    ):
         hex_geometry = hex_row.geometry
         hex_centroid_point = hex_geometry if hex_geometry.geom_type == "Point" else hex_geometry.centroid
 
@@ -598,9 +657,11 @@ def compute_co_accessibility(
     id_col: str = "hex_id",
     poi_id_col: str = "id",
     category_col: str = "category",
+    keep_poi_cols: Optional[Iterable[str]] = None,
     max_distance_from_graph: float = 200.0,
     approach: Literal["cumulative", "hansen"] = "cumulative",
     beta: float = 0.15,
+    show_progress: bool = False,
 ) -> gpd.GeoDataFrame:
     """
     Compute co-accessibility for each POI.
@@ -633,6 +694,8 @@ def compute_co_accessibility(
         POI identifier column in `pois`.
     category_col : str, default "category"
         Optional POI category column. Preserved if present in `pois`.
+    keep_poi_cols : iterable[str], optional
+        Additional POI columns to keep in the output, such as `["name", "osmid"]`.
     max_distance_from_graph : float, default 200.0
         Maximum allowed snapping distance (graph CRS units, typically meters)
         from each hex centroid and POI to the nearest graph node. Must be > 0.
@@ -642,12 +705,14 @@ def compute_co_accessibility(
         - "hansen": distance-decayed reachable population using `exp(-beta * cost)`
     beta : float, default 0.15
         Exponential decay parameter used only when `approach="hansen"`.
+    show_progress : bool, default False
+        If True, show progress while routing from POIs.
 
     Returns
     -------
     GeoDataFrame
         One row per POI with:
-        [poi_id_col, category_col (if present), geometry, coacc_<group1>, ...]
+        [poi_id_col, category_col (if present), any kept POI columns, geometry, coacc_<group1>, ...]
         Geometry is in the original POI CRS.
     """
     # -------------------------
@@ -675,6 +740,18 @@ def compute_co_accessibility(
         raise ValueError("approach must be either 'cumulative' or 'hansen'.")
     if approach == "hansen" and beta <= 0:
         raise ValueError("beta must be > 0 when approach='hansen'.")
+
+    if keep_poi_cols is None:
+        keep_poi_col_names: List[str] = []
+    else:
+        keep_poi_col_names = [str(col_name) for col_name in keep_poi_cols]
+        if len(set(keep_poi_col_names)) != len(keep_poi_col_names):
+            raise ValueError("keep_poi_cols contains duplicates.")
+        for col_name in keep_poi_col_names:
+            if col_name not in pois.columns:
+                raise ValueError(f"pois missing requested kept column '{col_name}'.")
+            if col_name in {poi_id_col, category_col, "geometry"}:
+                continue
 
     graph_has_cost_attribute = any(
         cost_attr in edge_data for _, _, _, edge_data in graph.edges(keys=True, data=True)
@@ -758,6 +835,9 @@ def compute_co_accessibility(
     keep_category = category_col in pois.columns
     if keep_category:
         poi_keep_columns.append(category_col)
+    for col_name in keep_poi_col_names:
+        if col_name not in poi_keep_columns:
+            poi_keep_columns.append(col_name)
 
     pois_out = pois[poi_keep_columns].copy()
     pois_out = pois_out[pois_out["geometry"].notna()].copy()
@@ -787,7 +867,14 @@ def compute_co_accessibility(
 
     max_cost_value = float(max_cost)
 
-    for poi_index, poi_row in pois_work.iterrows():
+    poi_rows = pois_work.iterrows()
+    for poi_index, poi_row in _iter_with_progress(
+        poi_rows,
+        show_progress=show_progress,
+        desc="Computing co-accessibility",
+        total=len(pois_work),
+        unit="poi",
+    ):
         if float(poi_row.distance_from_graph) > float(max_distance_from_graph):
             continue
 
@@ -854,6 +941,7 @@ def compute_2sfca_accessibility(
     max_distance_from_graph: float = 200.0,
     decay: Literal["binary", "exp"] = "binary",
     beta: float = 0.15,
+    show_progress: bool = False,
 ) -> gpd.GeoDataFrame:
     """
     Compute 2SFCA accessibility for each hexagon.
@@ -867,6 +955,11 @@ def compute_2sfca_accessibility(
     Output columns:
     - sfca_<category> for each POI category
     - sfca_total as the sum across categories
+
+    Parameters
+    ----------
+    show_progress : bool, default False
+        If True, show progress during provider and demand catchment routing.
     """
     # -------------------------
     # 1) validate inputs
@@ -1011,7 +1104,13 @@ def compute_2sfca_accessibility(
     node_to_category_ratio_pairs: Dict[int, List[Tuple[str, float]]] = {}
     max_cost_value = float(max_cost)
 
-    for provider_node_id in provider_node_ids:
+    for provider_node_id in _iter_with_progress(
+        provider_node_ids,
+        show_progress=show_progress,
+        desc="Computing 2SFCA provider catchments",
+        total=len(provider_node_ids),
+        unit="node",
+    ):
         shortest_path_costs = nx.single_source_dijkstra_path_length(
             graph,
             provider_node_id,
@@ -1049,7 +1148,14 @@ def compute_2sfca_accessibility(
         sfca_scores[f"sfca_{poi_category_name}"] = 0.0
     sfca_scores["sfca_total"] = 0.0
 
-    for hex_index, hex_row in hexes[[id_col, "geometry"]].iterrows():
+    hex_rows = hexes[[id_col, "geometry"]].iterrows()
+    for hex_index, hex_row in _iter_with_progress(
+        hex_rows,
+        show_progress=show_progress,
+        desc="Computing 2SFCA demand catchments",
+        total=len(hexes),
+        unit="hex",
+    ):
         hex_geometry = hex_row.geometry
         hex_centroid_point = hex_geometry if hex_geometry.geom_type == "Point" else hex_geometry.centroid
 

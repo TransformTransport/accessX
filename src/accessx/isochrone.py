@@ -1,6 +1,7 @@
 # accessx/isochrone.py
 from __future__ import annotations
 
+import warnings
 from typing import List, Literal, Optional, Union
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -13,6 +14,28 @@ from shapely.geometry import Point, LineString, Polygon
 
 
 Method = Literal["hull", "edges"]
+
+
+def _iter_with_progress(
+    iterable,
+    *,
+    show_progress: bool,
+    desc: str,
+    total: Optional[int] = None,
+    unit: str = "item",
+):
+    if not show_progress:
+        return iterable
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        warnings.warn(
+            "show_progress=True requires tqdm. Install tqdm or set show_progress=False.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return iterable
+    return tqdm(iterable, desc=desc, total=total, unit=unit)
 
 
 def find_nearest_node_within_distance(G, hex, max_distance):
@@ -155,6 +178,7 @@ def calculate_isochrones(
     save_dir: Optional[Union[str, Path]] = None,
     base_name: str = "walksheds",
     n_jobs: int = 1,
+    show_progress: bool = False,
 ) -> gpd.GeoDataFrame:
     """
     Ιsochrone polygons:
@@ -182,6 +206,8 @@ def calculate_isochrones(
         If provided, saves one CSV per threshold (WKT geometry columns).
     n_jobs : int, default 1
         Number of processes for parallel execution. Use >1 to parallelize across hexes.
+    show_progress : bool, default False
+        If True, show progress while processing hexes.
 
     Returns
     -------
@@ -230,7 +256,16 @@ def calculate_isochrones(
             "max_cost_f": max_cost_f,
         }
         _init_worker(state)
-        rows = [_process_hex_worker(item) for item in items]
+        rows = [
+            _process_hex_worker(item)
+            for item in _iter_with_progress(
+                items,
+                show_progress=show_progress,
+                desc="Calculating isochrones",
+                total=len(items),
+                unit="hex",
+            )
+        ]
     else:
         state = {
             "G": G,
@@ -247,7 +282,14 @@ def calculate_isochrones(
         rows = []
         with ProcessPoolExecutor(max_workers=n_jobs, initializer=_init_worker, initargs=(state,)) as ex:
             futures = [ex.submit(_process_hex_worker, item) for item in items]
-            for f in as_completed(futures):
+            completed_futures = _iter_with_progress(
+                as_completed(futures),
+                show_progress=show_progress,
+                desc="Calculating isochrones",
+                total=len(futures),
+                unit="hex",
+            )
+            for f in completed_futures:
                 rows.append(f.result())
 
     out_thr = pd.DataFrame(rows)
