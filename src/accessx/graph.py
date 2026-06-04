@@ -1,18 +1,36 @@
 # accessx/graph.py
 from __future__ import annotations
 
+import warnings
 from typing import Optional, Union
 
 import geopandas as gpd
 import networkx as nx
 import osmnx as ox
 from pathlib import Path
-from typing import Union
-
-import osmnx as ox
-import networkx as nx
 
 from accessx.io import save_gdf, read_gdf
+
+
+def _make_progress_bar(show_progress: bool, *, total: int, desc: str):
+    if not show_progress:
+        return None
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        warnings.warn(
+            "show_progress=True requires tqdm. Install tqdm or set show_progress=False.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return None
+    return tqdm(total=total, desc=desc, unit="step")
+
+
+def _advance_progress(progress_bar, description: str) -> None:
+    if progress_bar is not None:
+        progress_bar.set_description(description)
+        progress_bar.update(1)
 
 
 def save_graph(
@@ -150,6 +168,7 @@ def build_network(
     simplify: bool = False,
     retain_all: bool = True,
     remove_isolates: bool = True,
+    show_progress: bool = False,
 ) -> nx.MultiDiGraph:
     """
     Build a walkable OSMnx graph from an AOI, with optional buffer (meters),
@@ -175,6 +194,9 @@ def build_network(
         Keep all components from OSMnx download.
     remove_isolates : bool
         Remove isolated nodes (degree 0).
+    show_progress : bool
+        If True, show high-level progress while preparing, downloading, cleaning,
+        and projecting the network.
 
     Returns
     -------
@@ -186,32 +208,41 @@ def build_network(
     if AOI.crs is None:
         raise ValueError("AOI must have a CRS.")
 
-    # Ensure single polygon (OSMnx wants a single geometry)
-    aoi_one = AOI.copy()
-    if len(aoi_one) > 1:
-        aoi_one = aoi_one.dissolve(by=None).reset_index(drop=True)
+    progress_bar = _make_progress_bar(show_progress, total=4, desc="Building street network")
+    try:
+        # Ensure single polygon (OSMnx wants a single geometry)
+        aoi_one = AOI.copy()
+        if len(aoi_one) > 1:
+            aoi_one = aoi_one.dissolve(by=None).reset_index(drop=True)
 
-    # --- IMPORTANT BIT: buffer in a metric CRS ---
-    if buffer_m and buffer_m != 0:
-        aoi_metric = aoi_one.to_crs(city_epsg)
-        aoi_metric["geometry"] = aoi_metric.geometry.buffer(buffer_m)
-        AOI_wgs84_buffer = aoi_metric.to_crs(4326)
-    else:
-        AOI_wgs84_buffer = aoi_one.to_crs(4326)
+        # --- IMPORTANT BIT: buffer in a metric CRS ---
+        if buffer_m and buffer_m != 0:
+            aoi_metric = aoi_one.to_crs(city_epsg)
+            aoi_metric["geometry"] = aoi_metric.geometry.buffer(buffer_m)
+            AOI_wgs84_buffer = aoi_metric.to_crs(4326)
+        else:
+            AOI_wgs84_buffer = aoi_one.to_crs(4326)
+        _advance_progress(progress_bar, "Prepared AOI")
 
-    # collecting the street network (your code style)
-    G_wgs84 = ox.graph_from_polygon(
-        polygon=AOI_wgs84_buffer.iloc[0].geometry,
-        network_type=network_type,
-        simplify=simplify,
-        retain_all=retain_all,
-    )
+        # collecting the street network (your code style)
+        G_wgs84 = ox.graph_from_polygon(
+            polygon=AOI_wgs84_buffer.iloc[0].geometry,
+            network_type=network_type,
+            simplify=simplify,
+            retain_all=retain_all,
+        )
+        _advance_progress(progress_bar, "Downloaded OSM network")
 
-    # remove isolates (your code style)
-    if remove_isolates:
-        G_wgs84.remove_nodes_from(list(nx.isolates(G_wgs84)))
+        # remove isolates (your code style)
+        if remove_isolates:
+            G_wgs84.remove_nodes_from(list(nx.isolates(G_wgs84)))
+        _advance_progress(progress_bar, "Cleaned graph")
 
-    # reproject the walking network (your code style)
-    G_proj = ox.project_graph(G_wgs84, to_crs=city_epsg)
+        # reproject the walking network (your code style)
+        G_proj = ox.project_graph(G_wgs84, to_crs=city_epsg)
+        _advance_progress(progress_bar, "Projected graph")
 
-    return G_proj
+        return G_proj
+    finally:
+        if progress_bar is not None:
+            progress_bar.close()

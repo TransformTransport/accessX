@@ -81,6 +81,46 @@ def _make_thresholds(max_cost: float, interval_size: Union[int, float]) -> List[
 def _format_threshold(t: float) -> str:
     return f"{t:g}".replace(".", "p")
 
+
+def _save_isochrones_gpkg(
+    gdf_res: gpd.GeoDataFrame,
+    *,
+    path: Path,
+    thresholds: List[float],
+    colnames: dict,
+    id_col: str,
+    cost_attr: str,
+) -> None:
+    """
+    Save isochrone results to one GeoPackage with QGIS-friendly layers.
+    """
+    if path.exists():
+        path.unlink()
+
+    origins = gpd.GeoDataFrame(
+        gdf_res[[id_col, "geometry"]].copy(),
+        geometry="geometry",
+        crs=gdf_res.crs,
+    )
+    origins.to_file(path, layer="origins", driver="GPKG")
+
+    for threshold in thresholds:
+        geom_col = colnames[threshold]
+        layer_name = f"walksheds_{_format_threshold(threshold)}"
+        layer = gdf_res[[id_col, geom_col]].copy()
+        layer = layer.rename(columns={geom_col: "geometry"})
+        layer["threshold"] = threshold
+        layer["cost_attr"] = cost_attr
+        layer = layer[[id_col, "threshold", "cost_attr", "geometry"]]
+        layer = gpd.GeoDataFrame(layer, geometry="geometry", crs=gdf_res.crs)
+        layer.to_file(path, layer=layer_name, driver="GPKG")
+
+
+def _union_geometries(geometries: gpd.GeoSeries):
+    if hasattr(geometries, "union_all"):
+        return geometries.union_all()
+    return geometries.unary_union
+
 _WORKER_STATE = {}
 
 
@@ -146,7 +186,7 @@ def _process_hex_worker(item):
                 continue
 
             e = gpd.GeoSeries(edge_lines).buffer(edge_buff).geometry
-            geom = gpd.GeoSeries(list(e)).union_all()
+            geom = _union_geometries(gpd.GeoSeries(list(e)))
 
             if infill and geom is not None:
                 try:
@@ -203,7 +243,8 @@ def calculate_isochrones(
     method : {"edges","hull"}
         Polygon building method.
     save_dir : optional
-        If provided, saves one CSV per threshold (WKT geometry columns).
+        If provided, saves one GeoPackage with separate `origins` and
+        `walksheds_<threshold>` layers.
     n_jobs : int, default 1
         Number of processes for parallel execution. Use >1 to parallelize across hexes.
     show_progress : bool, default False
@@ -295,20 +336,16 @@ def calculate_isochrones(
     out_thr = pd.DataFrame(rows)
     gdf_res = gdf_res.merge(out_thr, on=id_col, how="left")
 
-    # optional save per threshold as CSV with WKT
+    # optional save as one QGIS-friendly GeoPackage with one layer per geometry
     if save_dir_path is not None:
-        for t in thresholds:
-            thr_str = _format_threshold(t)
-            fname = f"{base_name}_{method}_{cost_attr}_{thr_str}.csv"
-
-            # CSV stores geometries as WKT strings, so use a plain DataFrame before
-            # replacing the active GeoDataFrame geometry column.
-            out_csv = pd.DataFrame(gdf_res[[id_col, "geometry", colnames[t]]].copy())
-
-            # convert geometry columns to WKT for CSV
-            out_csv["geometry"] = out_csv["geometry"].apply(lambda g: g.wkt if g is not None else None)
-            out_csv[colnames[t]] = out_csv[colnames[t]].apply(lambda g: g.wkt if g is not None else None)
-
-            out_csv.to_csv(save_dir_path / fname, index=False)
+        gpkg_path = save_dir_path / f"{base_name}_{method}_{cost_attr}.gpkg"
+        _save_isochrones_gpkg(
+            gdf_res,
+            path=gpkg_path,
+            thresholds=thresholds,
+            colnames=colnames,
+            id_col=id_col,
+            cost_attr=cost_attr,
+        )
 
     return gdf_res
