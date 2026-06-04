@@ -92,11 +92,13 @@ graph = acx.build_network(
     city_epsg=2100,
     buffer_m=1000,
     network_type="walk",
+    show_progress=True,
 )
 graph = acx.add_time_cost_constant_speed(
     graph,
     speed_kmh=4.5,
     cost_col="walk_time",
+    show_progress=True,
 )
 
 # 3. POIs with custom analytical categories backed by explicit OSM tags

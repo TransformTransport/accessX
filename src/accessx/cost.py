@@ -1,9 +1,33 @@
 from __future__ import annotations
 
 import math
+import warnings
 from typing import Callable, Optional, Union
 
+from pyproj import CRS
 import networkx as nx
+
+
+def _iter_with_progress(iterable, *, total: int, show_progress: bool, desc: str):
+    if not show_progress:
+        return iterable
+    try:
+        from tqdm.auto import tqdm
+    except ImportError:
+        warnings.warn(
+            "show_progress=True requires tqdm. Install tqdm or set show_progress=False.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return iterable
+    return tqdm(iterable, total=total, desc=desc, unit="edge")
+
+
+def _is_wgs84(crs) -> bool:
+    try:
+        return CRS.from_user_input(crs).to_epsg() == 4326
+    except Exception:
+        return False
 
 def add_slope_based_time(
     *,
@@ -59,6 +83,7 @@ def add_edge_cost(
     *,
     cost_fn: Callable[[dict], Union[int, float]],
     cost_col: str,
+    show_progress: bool = False,
 ) -> nx.MultiDiGraph:
     """
     Add/overwrite an edge cost attribute using a user-provided function.
@@ -71,6 +96,8 @@ def add_edge_cost(
         cost_fn(edge_data_dict) -> numeric cost (any units you define).
     cost_col : str
         Name of the edge attribute to store the computed cost.
+    show_progress : bool
+        If True, show progress while assigning edge costs.
 
     Returns
     -------
@@ -78,10 +105,17 @@ def add_edge_cost(
         Graph with added/updated edge attribute `cost_col`.
     """
     crs = G.graph.get("crs")
-    if crs is None or crs.to_epsg() == 4326:
+    if crs is None or _is_wgs84(crs):
         raise ValueError("Graph must be projected to a metric CRS (not EPSG:4326).")
 
-    for _, _, _, data in G.edges(keys=True, data=True):
+    edge_iter = G.edges(keys=True, data=True)
+    edge_iter = _iter_with_progress(
+        edge_iter,
+        total=G.number_of_edges(),
+        show_progress=show_progress,
+        desc=f"Adding {cost_col}",
+    )
+    for _, _, _, data in edge_iter:
         val = cost_fn(data)
         if val is None:
             raise ValueError(f"cost_fn returned None for an edge; must return a number for '{cost_col}'.")
@@ -97,6 +131,7 @@ def add_time_cost_constant_speed(
     speed_kmh: float = 4.5,
     cost_col: str = "time_min",
     length_col: str = "length",
+    show_progress: bool = False,
 ) -> nx.MultiDiGraph:
     """
     Add edge travel time cost (minutes) assuming constant speed (km/h).
@@ -113,5 +148,4 @@ def add_time_cost_constant_speed(
             raise KeyError(f"Edge missing '{length_col}'.")
         return float(length_m) / v_mpm
 
-    return add_edge_cost(G, cost_fn=_time_cost, cost_col=cost_col)
-
+    return add_edge_cost(G, cost_fn=_time_cost, cost_col=cost_col, show_progress=show_progress)
