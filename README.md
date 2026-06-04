@@ -8,6 +8,8 @@ The **X** can represent any network cost threshold: walking minutes, cycling tim
 
 Built on GeoPandas, OSMnx, NetworkX, H3, and rasterio, accessX provides a focused API for reproducible accessibility workflows without hiding the underlying geospatial data.
 
+![Healthcare accessibility across Amsterdam, Athens, and Milan](docs/figures/case-study-accessibility-grid.png)
+
 ## Design Principles
 
 - **Plug-n-play, without locking you in:** accessX provides ready-to-use methods for common accessibility workflows while keeping the underlying GeoDataFrames and OSMnx graphs available for customization.
@@ -39,6 +41,26 @@ Area of interest
 ```
 
 Isochrones are available as an optional communication and visualization layer.
+
+## Case Study Gallery
+
+The case-study notebooks save their intermediate and final GeoDataFrames, so figures can be regenerated from existing outputs without rerunning network routing or data downloads.
+
+![Population demand aggregated to hexagons](docs/figures/case-study-population-demand.png)
+
+*Population demand is allocated to H3 hexagons and used as the demand surface for supply-demand accessibility models such as 2SFCA.*
+
+![OpenStreetMap POI categories](docs/figures/case-study-poi-categories.png)
+
+*OpenStreetMap features are grouped into analytical opportunity categories while preserving their original OSM tags and identifiers.*
+
+![Sufficientarian accessibility scores](docs/figures/case-study-equity-sufficientarian.png)
+
+*Equity workflows can summarize whether each origin satisfies a basket of minimum accessibility thresholds.*
+
+![Destination-side co-accessibility in Amsterdam](docs/figures/case-study-coaccessibility-amsterdam.png)
+
+*Co-accessibility flips the question from origins to destinations: how many people can reach each park or public square?*
 
 ## Installation
 
@@ -91,7 +113,7 @@ pois = acx.get_pois_osm(
     show_progress=True,
 )
 
-# 4. Reachable POIs within 15 walking minutes
+# 4. Cumulative opportunities within 15 walking minutes
 counts = acx.count_accessible_pois(
     graph,
     hexes.to_crs(2100),
@@ -106,7 +128,7 @@ counts = acx.count_accessible_pois(
 
 | Model | Function | Question Answered | Main Inputs |
 | --- | --- | --- | --- |
-| Reachable counts | `count_accessible_pois` | How many opportunities can each origin reach within X cost? | Hexes, POIs, graph |
+| Cumulative opportunity measure | `count_accessible_pois` | How many opportunities can each origin reach within X cost? | Hexes, POIs, graph |
 | Nearest POI cost | `compute_nearest_poi_cost` | How far is the nearest reachable POI in each category? | Hexes, POIs, graph |
 | Hansen accessibility | `compute_hansen_accessibility` | How much opportunity is available when nearby POIs contribute more? | Hexes, weighted POIs, graph |
 | 2SFCA / E2SFCA-like accessibility | `compute_2sfca_accessibility` | How strong is service supply relative to accessible population demand? | Hex demand, POI supply, graph |
@@ -252,7 +274,7 @@ Prepare population demand data.
 
 Calculate origin-based and destination-based accessibility.
 
-- `count_accessible_pois`: reachable opportunity counts by category
+- `count_accessible_pois`: cumulative opportunity measure by category
 - `compute_nearest_poi_cost`: nearest POI costs in list, long, or wide output formats
 - `compute_hansen_accessibility`: distance-decayed opportunity accessibility
 - `compute_2sfca_accessibility`: supply-demand catchment accessibility with binary or exponential decay
@@ -288,7 +310,7 @@ The notebooks provide focused, reproducible examples:
 - [`case_study_isochrones.ipynb`](notebooks/case_study_isochrones.ipynb): AOIs, hex grids, street networks, costs, and isochrones
 - [`case_study_population.ipynb`](notebooks/case_study_population.ipynb): WorldPop and population-to-hex workflows
 - [`case_study_pois.ipynb`](notebooks/case_study_pois.ipynb): OSM tags, custom POI groups, retries, and query reports
-- [`case_study_accessibility.ipynb`](notebooks/case_study_accessibility.ipynb): reachable counts, nearest POIs, Hansen accessibility, and 2SFCA
+- [`case_study_accessibility.ipynb`](notebooks/case_study_accessibility.ipynb): cumulative opportunities, nearest POIs, Hansen accessibility, and 2SFCA
 - [`case_study_co_accessibility.ipynb`](notebooks/case_study_co_accessibility.ipynb): population access around POIs
 - [`case_study_equity.ipynb`](notebooks/case_study_equity.ipynb): territorial and population-based accessibility equity
 
