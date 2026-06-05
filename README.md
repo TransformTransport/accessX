@@ -62,6 +62,31 @@ The case-study notebooks save their intermediate and final GeoDataFrames, so fig
 
 *Co-accessibility identifies parks and public squares where children, adults, and older adults have walkable access, using Shannon diversity to highlight stronger potential intergenerational encounter opportunities.*
 
+## Relevant Research
+
+The methods in `accessX` are connected to the following research and tools. Some works used related computational code, while others provide the conceptual or methodological basis for the library.
+
+### Co-Accessibility
+
+- Milias, V., & Psyllidis, A. (2022). Measuring spatial age segregation through the lens of co-accessibility to urban activities. *Computers, Environment and Urban Systems, 95*, 101829. https://doi.org/10.1016/j.compenvurbsys.2022.101829
+- Milias, V., Psyllidis, A., & Bozzon, A. (2024). Bridging or separating? Co-accessibility as a measure of potential place-based encounters. *Journal of Transport Geography, 121*, 104027. https://doi.org/10.1016/j.jtrangeo.2024.104027
+- Milias, V. (n.d.). *CTwalkMap* [Web mapping tool]. https://miliasv.github.io/CTwalkMap/?city=amsterdam
+
+### Equity
+
+- Milias, V., Tsigdinos, S., Tzouras, P. G., & Kepaptsoglou, K. (2025). Assessing equitable access in X-minute cities through open spatial data. *Environment and Planning B: Urban Analytics and City Science*. Advance online publication. https://doi.org/10.1177/23998083251398660
+- Milias, V. (n.d.). *CThood* [Web mapping tool]. https://miliasv.github.io/CThood/?city=athens#11.95/38.00354/23.76933
+
+### Accessibility Models
+
+- Hansen, W. G. (1959). How accessibility shapes land use. *Journal of the American Institute of Planners, 25*(2), 73–76.
+- Luo, W., & Wang, F. (2003). Measures of spatial accessibility to health care in a GIS environment: Synthesis and a case study in the Chicago region. *Environment and Planning B: Planning and Design, 30*(6), 865–884.
+
+### Broader Concepts
+
+- Moreno, C., Allam, Z., Chabaud, D., Gall, C., & Pratlong, F. (2021). Introducing the “15-Minute City”: Sustainability, resilience and place identity in future post-pandemic cities. *Smart Cities, 4*(1), 93–111. https://doi.org/10.3390/smartcities4010006
+- Handy, S. (2020). Is accessibility an idea whose time has finally come? *Transportation Research Part D: Transport and Environment, 83*, 102319. https://doi.org/10.1016/j.trd.2020.102319
+
 ## Installation
 
 ```bash
