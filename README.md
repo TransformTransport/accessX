@@ -58,9 +58,9 @@ The case-study notebooks save their intermediate and final GeoDataFrames, so fig
 
 *Equity workflows can summarize whether each origin satisfies a basket of minimum accessibility thresholds.*
 
-![Destination-side co-accessibility in Amsterdam](docs/figures/case-study-coaccessibility-amsterdam.png)
+![Age-group co-accessibility to Amsterdam parks and public squares](docs/figures/case-study-coaccessibility-amsterdam.png)
 
-*Co-accessibility flips the question from origins to destinations: how many people can reach each park or public square?*
+*Co-accessibility identifies parks and public squares where children, adults, and older adults have walkable access, using Shannon diversity to highlight stronger potential intergenerational encounter opportunities.*
 
 ## Installation
 
