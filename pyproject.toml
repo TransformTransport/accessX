@@ -53,6 +53,7 @@ dependencies = [
   "seaborn",
   "shapely",
   "tobler",
+  "tqdm",
 ]
 
 [project.urls]
