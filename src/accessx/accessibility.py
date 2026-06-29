@@ -947,14 +947,16 @@ def compute_2sfca_accessibility(
     Compute 2SFCA accessibility for each hexagon.
 
     Two-step logic:
-    1) Provider ratio at each POI node:
-       R_j = S_j / sum_k( D_k * f(c_kj) )
-    2) Hex accessibility:
-       A_i = sum_j( R_j * f(c_ij) )
+
+    1. Provider ratio at each POI node:
+       ``R_j = S_j / sum_k(D_k * f(c_kj))``
+    2. Hex accessibility:
+       ``A_i = sum_j(R_j * f(c_ij))``
 
     Output columns:
-    - sfca_<category> for each POI category
-    - sfca_total as the sum across categories
+
+    - ``sfca_<category>`` for each POI category
+    - ``sfca_total`` as the sum across categories
 
     Parameters
     ----------

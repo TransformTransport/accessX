@@ -17,6 +17,7 @@ env_*/
 build/
 dist/
 *.egg-info/
+docs/_build/
 
 # Local notebooks, data, and generated outputs
 cache/
@@ -28,4 +29,3 @@ output*.png
 .DS_Store
 .idea/
 .vscode/
-
