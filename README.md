@@ -8,10 +8,12 @@ The **X** can represent any network cost threshold: walking minutes, cycling tim
 
 Built on GeoPandas, OSMnx, NetworkX, H3, and rasterio, accessX provides a focused API for reproducible accessibility workflows without hiding the underlying geospatial data.
 
+##Documentation
+[https://app.transformtransport.org/readthedocs/accessx.html](https://app.transformtransport.org/readthedocs/accessx.html)
+
+
 ![Healthcare accessibility across Amsterdam, Athens, and Milan](docs/figures/case-study-accessibility-grid.png)
 
-## 
-Documentation: [https://app.transformtransport.org/readthedocs/accessx.html](https://app.transformtransport.org/readthedocs/accessx.html)
 
 ## Design Principles
 
