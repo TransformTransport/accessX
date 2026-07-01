@@ -76,6 +76,19 @@ For local development:
 pip install -e .
 ```
 
+## Documentation
+
+The library documentation is a static HTML page at [`docs/access.html`](docs/access.html).
+
+Open it locally:
+
+```bash
+open docs/access.html
+```
+
+For FTP hosting, upload `docs/access.html`, `docs/assets/`, and any referenced
+files under `docs/figures/`.
+
 ## Quick Start
 
 ```python
