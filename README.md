@@ -12,6 +12,10 @@ Built on GeoPandas, OSMnx, NetworkX, H3, and rasterio, accessX provides a focuse
 
 [https://app.transformtransport.org/readthedocs/accessx.html](https://app.transformtransport.org/readthedocs/accessx.html)
 
+## DOI
+[![DOI](https://zenodo.org/badge/1133570381.svg)](https://doi.org/10.5281/zenodo.21099762)
+
+
 
 ## Design Principles
 
