@@ -13,9 +13,6 @@ Built on GeoPandas, OSMnx, NetworkX, H3, and rasterio, accessX provides a focuse
 [https://app.transformtransport.org/readthedocs/accessx.html](https://app.transformtransport.org/readthedocs/accessx.html)
 
 
-![Healthcare accessibility across Amsterdam, Athens, and Milan](docs/figures/case-study-accessibility-grid.png)
-
-
 ## Design Principles
 
 - **Plug-n-play, without locking you in:** accessX provides ready-to-use methods for common accessibility workflows while keeping the underlying GeoDataFrames and OSMnx graphs available for customization.
@@ -33,6 +30,9 @@ Built on GeoPandas, OSMnx, NetworkX, H3, and rasterio, accessX provides a focuse
 - Where is service supply high or low relative to population demand?
 - How many people can access the same POI?
 - How evenly is accessibility distributed across neighborhoods or population groups?
+
+![Healthcare accessibility across Amsterdam, Athens, and Milan](docs/figures/case-study-accessibility-grid.png)
+
 
 ## Workflow
 
