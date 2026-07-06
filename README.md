@@ -320,7 +320,7 @@ accessX is released under the MIT License.
 
 ## Relevant Research
 
-The methods in `accessX` are connected to the following research and tools. Some works used related computational code, while others provide the conceptual or methodological basis for the library.
+The methods in `accessX` are connected to the following research and tools. Some works used related computational code, while others provide the conceptual or methodological basis for the library. This list includes previous research done by the Transform Transport team.
 
 ### Co-Accessibility
 
@@ -338,7 +338,13 @@ The methods in `accessX` are connected to the following research and tools. Some
 - Hansen, W. G. (1959). How accessibility shapes land use. *Journal of the American Institute of Planners, 25*(2), 73–76.
 - Luo, W., & Wang, F. (2003). Measures of spatial accessibility to health care in a GIS environment: Synthesis and a case study in the Chicago region. *Environment and Planning B: Planning and Design, 30*(6), 865–884.
 
+### Tools and Applications
+
+- Albashir, A., Messa, F., Presicce, D., Pedrazzoli, A., & Gorrini, A. (2024). 15min City Score Toolkit - Notebook. In *Transform Transport Open Source Collection*. Zenodo. https://doi.org/10.5281/zenodo.14231427
+- Messa, F., Presicce, D., Pedrazzoli, A., Albashir, A., & Gorrini, A. (2026). 15min City Score - Europe Map. In *Transform Transport Open Source Collection*. Zenodo. https://doi.org/10.5281/zenodo.19610329
+
 ### Broader Concepts
 
+- Abdelfattah, L., Deponte, D., & Fossa, G. (2022). The 15-minute city as a hybrid model for Milan. *TeMA – Journal of Land Use, Mobility and Environment*, 71-86. https://doi.org/10.6093/1970-9870/8653
 - Moreno, C., Allam, Z., Chabaud, D., Gall, C., & Pratlong, F. (2021). Introducing the “15-Minute City”: Sustainability, resilience and place identity in future post-pandemic cities. *Smart Cities, 4*(1), 93–111. https://doi.org/10.3390/smartcities4010006
 - Handy, S. (2020). Is accessibility an idea whose time has finally come? *Transportation Research Part D: Transport and Environment, 83*, 102319. https://doi.org/10.1016/j.trd.2020.102319
