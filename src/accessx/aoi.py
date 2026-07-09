@@ -102,6 +102,7 @@ def make_hex_grid(
     *,
     resolution: int = 9,
     clip: bool = True,
+    buffer: bool = True,
     return_geoms: bool = True,
     save_path: Optional[Union[str, Path]] = None,
 ) -> gpd.GeoDataFrame:
@@ -116,6 +117,8 @@ def make_hex_grid(
         H3 resolution.
     clip : bool
         If True, clip hexes to AOI footprint (depends on tobler implementation).
+    buffer : bool
+        f True, force hexagons to completely fill the interior of the source area. if False, (h3 default) may result in empty areas within the source area.
     return_geoms : bool
         If True, return hex geometries.
     save_path : str | Path, optional
@@ -140,6 +143,7 @@ def make_hex_grid(
         aoi_in,
         resolution=resolution,
         clip=clip,
+        buffer=buffer,
         return_geoms=return_geoms,
     )
 
