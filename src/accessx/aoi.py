@@ -118,7 +118,7 @@ def make_hex_grid(
     clip : bool
         If True, clip hexes to AOI footprint (depends on tobler implementation).
     buffer : bool
-        f True, force hexagons to completely fill the interior of the source area. if False, (h3 default) may result in empty areas within the source area.
+        If True, force hexagons to completely fill the interior of the source area. if False, (h3 default) may result in empty areas within the source area.
     return_geoms : bool
         If True, return hex geometries.
     save_path : str | Path, optional
