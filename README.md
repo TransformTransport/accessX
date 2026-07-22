@@ -10,6 +10,7 @@ Built on GeoPandas, OSMnx, NetworkX, H3, and rasterio, accessX provides a focuse
 
 ## Citing accessX
 If you use accessX in your work, please cite the accompanying paper or software record.
+
 Milias, V., Messa, F., Scarponi, L., Ceccarelli, G.& Presicce, D. (2026). accessX: A Python library for proximity-based accessibility analysis. In Transform Transport Open Source Collection (Version accessx_v0.1.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.21099763
 
 ## Documentation
