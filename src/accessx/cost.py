@@ -79,19 +79,21 @@ def add_slope_based_time(
 # -------------------- generic primitive --------------------------------------
 
 def add_edge_cost(
-    G: nx.MultiDiGraph,
+    G: Union[nx.MultiDiGraph, nx.MultiGraph],
     *,
     cost_fn: Callable[[dict], Union[int, float]],
     cost_col: str,
     show_progress: bool = False,
-) -> nx.MultiDiGraph:
+) -> Union[nx.MultiDiGraph, nx.MultiGraph]:
     """
     Add/overwrite an edge cost attribute using a user-provided function.
 
     Parameters
     ----------
-    G : MultiDiGraph
-        Input graph.
+    G : MultiDiGraph | MultiGraph
+        Input graph. If undirected, parallel/reciprocal edges share a single
+        cost value, so a direction-dependent cost_fn (e.g. slope-based) will
+        lose directionality.
     cost_fn : callable
         cost_fn(edge_data_dict) -> numeric cost (any units you define).
     cost_col : str
@@ -101,12 +103,20 @@ def add_edge_cost(
 
     Returns
     -------
-    MultiDiGraph
+    MultiDiGraph | MultiGraph
         Graph with added/updated edge attribute `cost_col`.
     """
     crs = G.graph.get("crs")
     if crs is None or _is_wgs84(crs):
         raise ValueError("Graph must be projected to a metric CRS (not EPSG:4326).")
+    if not G.is_directed():
+        warnings.warn(
+            f"add_edge_cost: G is undirected, so parallel/reciprocal edges share a single "
+            f"'{cost_col}' value. Direction-dependent cost functions (e.g. slope-based "
+            "costs) will lose directionality.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     edge_iter = G.edges(keys=True, data=True)
     edge_iter = _iter_with_progress(
@@ -126,13 +136,13 @@ def add_edge_cost(
 # -------------------- common time convenience --------------------------------
 
 def add_time_cost_constant_speed(
-    G: nx.MultiDiGraph,
+    G: Union[nx.MultiDiGraph, nx.MultiGraph],
     *,
     speed_kmh: float = 4.5,
     cost_col: str = "time_min",
     length_col: str = "length",
     show_progress: bool = False,
-) -> nx.MultiDiGraph:
+) -> Union[nx.MultiDiGraph, nx.MultiGraph]:
     """
     Add edge travel time cost (minutes) assuming constant speed (km/h).
     """

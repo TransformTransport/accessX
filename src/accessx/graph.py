@@ -34,7 +34,7 @@ def _advance_progress(progress_bar, description: str) -> None:
 
 
 def save_graph(
-    G: nx.MultiDiGraph,
+    G: Union[nx.MultiDiGraph, nx.MultiGraph],
     *,
     out_dir: Union[str, Path],
     base_name: str = "street",
@@ -47,8 +47,10 @@ def save_graph(
 
     Parameters
     ----------
-    G : MultiDiGraph
-        Projected OSMnx graph.
+    G : MultiDiGraph | MultiGraph
+        Projected OSMnx graph. Note that whether G is directed or undirected
+        is not stored in the saved node/edge files — pass the matching
+        `undirected` value to `load_graph` to rebuild it correctly.
     out_dir : str | Path
         Output directory.
     base_name : str
@@ -87,7 +89,8 @@ def load_graph(
     edges_path: Optional[Union[str, Path]] = None,
     crs: Optional[Union[int, str]] = None,
     node_id_col: str = "osmid",
-) -> nx.MultiDiGraph:
+    undirected: bool = False,
+) -> Union[nx.MultiDiGraph, nx.MultiGraph]:
     """
     Load a graph from saved nodes/edges files and rebuild an OSMnx graph.
 
@@ -98,6 +101,11 @@ def load_graph(
     Provide either:
     - (out_dir + base_name) following AccessX naming convention, OR
     - explicit nodes_path and edges_path.
+    
+    undirected : bool
+        If True, convert the rebuilt graph to an undirected MultiGraph.
+        ox.graph_from_gdfs always rebuilds a MultiDiGraph, so this must be
+        requested explicitly to match the graph that was originally saved.
     """
     # Determine paths
     if nodes_path is None or edges_path is None:
@@ -157,6 +165,11 @@ def load_graph(
     if nodes.crs is not None:
         G.graph["crs"] = nodes.crs
 
+    # graph_from_gdfs always returns a MultiDiGraph; convert here if the saved
+    # graph was undirected, since directedness is not round-tripped through files.
+    if undirected:
+        G = ox.convert.to_undirected(G)
+
     return G
 
 def build_network(
@@ -168,8 +181,9 @@ def build_network(
     simplify: bool = False,
     retain_all: bool = True,
     remove_isolates: bool = True,
+    undirected: bool = False,
     show_progress: bool = False,
-) -> nx.MultiDiGraph:
+) -> Union[nx.MultiDiGraph, nx.MultiGraph]:
     """
     Build a walkable OSMnx graph from an AOI, with optional buffer (meters),
     remove isolates, and project to a city/local CRS.
@@ -194,21 +208,38 @@ def build_network(
         Keep all components from OSMnx download.
     remove_isolates : bool
         Remove isolated nodes (degree 0).
+    undirected : bool
+        If True, convert the projected graph to an undirected MultiGraph after
+        building. Only lossless for network_type="walk" (OSMnx's only
+        bidirectional-by-default network type); direction-dependent edge costs
+        (e.g. slope-based) cannot be added correctly afterward.
     show_progress : bool
         If True, show high-level progress while preparing, downloading, cleaning,
         and projecting the network.
 
     Returns
     -------
-    MultiDiGraph
-        Projected graph in city_epsg.
+    MultiDiGraph | MultiGraph
+        Projected graph in city_epsg. MultiGraph if undirected=True.
     """
     if AOI is None or len(AOI) == 0:
         raise ValueError("AOI is empty.")
     if AOI.crs is None:
         raise ValueError("AOI must have a CRS.")
 
-    progress_bar = _make_progress_bar(show_progress, total=4, desc="Building street network")
+    if undirected and network_type != "walk":
+        warnings.warn(
+            f"undirected=True with network_type='{network_type}': OSMnx only builds 'walk' "
+            "networks as fully bidirectional by default, so collapsing this graph to "
+            "undirected can discard real one-way restrictions.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+    progress_bar = _make_progress_bar(
+        show_progress, total=5 if undirected else 4, desc="Building street network"
+    )
+
     try:
         # Ensure single polygon (OSMnx wants a single geometry)
         aoi_one = AOI.copy()
@@ -241,6 +272,10 @@ def build_network(
         # reproject the walking network (your code style)
         G_proj = ox.project_graph(G_wgs84, to_crs=city_epsg)
         _advance_progress(progress_bar, "Projected graph")
+
+        if undirected:
+            G_proj = ox.convert.to_undirected(G_proj)
+            _advance_progress(progress_bar, "Converted to undirected")
 
         return G_proj
     finally:
