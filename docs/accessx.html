@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>accessX Documentation</title>
+<meta content="Documentation for the accessX Python package." name="description"/>
+<link href="assets/accessx.css" rel="stylesheet"/>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="mobile-header">
+<button aria-label="Open contents" class="icon-button" data-toggle-sidebar="" type="button">☰</button>
+<a class="mobile-title" data-doc-link="" href="#home">accessX docs</a>
+<button aria-label="Toggle color theme" class="icon-button" data-toggle-theme="" type="button">◐</button>
+</header>
+<div class="docs-shell">
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-header">
+<a class="project" data-doc-link="" href="#home">
+<!-- <span class="project-mark">X</span> -->
+<span><h2>accessX</h2><h4>0.1.1 Documentation</h4></span>
+</a>
+<button aria-label="Close contents" class="sidebar-close" data-toggle-sidebar="" type="button">×</button>
+</div>
+<label class="search"><span>Search docs</span><input id="doc-search" placeholder="Search functions, parameters, examples" type="search"/></label>
+<nav aria-label="Contents" class="contents">
+<p>Contents</p>
+<a data-doc-link="" href="#home">Introduction</a>
+<a data-doc-link="" href="#installation">Installation</a>
+<a data-doc-link="" href="#getting-started">Getting Started</a>
+
+<details open=""><summary>User Reference</summary>
+<a data-doc-link="" href="#user-reference">Overview</a>
+<a data-doc-link="" href="#accessx-aoi-module"><code>accessx.aoi</code></a><a data-doc-link="" href="#accessx-graph-module"><code>accessx.graph</code></a><a data-doc-link="" href="#accessx-cost-module"><code>accessx.cost</code></a><a data-doc-link="" href="#accessx-poi-module"><code>accessx.poi</code></a><a data-doc-link="" href="#accessx-population-module"><code>accessx.population</code></a><a data-doc-link="" href="#accessx-accessibility-module"><code>accessx.accessibility</code></a><a data-doc-link="" href="#accessx-isochrone-module"><code>accessx.isochrone</code></a><a data-doc-link="" href="#accessx-equity-module"><code>accessx.equity</code></a><a data-doc-link="" href="#accessx-io-module"><code>accessx.io</code></a>
+</details>
+<a data-doc-link="" href="#examples">Examples</a>
+
+</nav>
+<button class="theme-button" data-toggle-theme="" type="button">Light / dark</button>
+</aside>
+<main class="document" id="main">
+<section class="doc-page" data-title="accessX documentation" id="home">
+<header class="page-header searchable" data-page="home" data-search-title="accessX documentation">
+<p class="eyebrow">accessX 0.1.1</p>
+<h1>accessX documentation</h1>
+<p class="lead">Network-based accessibility analysis for X-minute cities, proximity planning, and urban opportunity mapping.</p>
+</header>
+<section class="doc-panel citation-panel searchable" data-search-title="Citing accessX">
+<h2>Citing accessX</h2>
+<p>If you use <code>accessX</code> in academic work, please cite the accompanying paper or software record. </p>
+<div class="citation-box"><code>Milias, V., Messa, F., Scarponi, L., Ceccarelli, G.& Presicce, D. (2026). accessX: A Python library for proximity-based accessibility analysis. In Transform Transport Open Source Collection (Version accessx_v0.1.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.21099763.</code></div>
+<p><a class="button-link" href="https://doi.org/10.5281/zenodo.21099763" rel="noopener" target="_blank">Link</a></p>
+</section>
+
+<section class="doc-panel searchable" data-search-title="What accessX does">
+<p><code>accessX</code> is a Python package for network-based accessibility analysis. It supports reproducible workflows for X-minute-city analysis, proximity planning, opportunity mapping, co-accessibility, and equity assessment.</p>
+<div class="callout"><strong>What does X mean?</strong><span>The X can be any network cost threshold: walking minutes, cycling time, distance, generalized cost, or a custom edge-weight measure.</span></div>
+<div class="card-grid"><a href="https://github.com/TransformTransport/accessX" rel="noopener" target="_blank"><strong>GitHub repository</strong><span>Source code, issues, releases, and package files.</span></a><a href="https://github.com/TransformTransport/accessX/tree/main/notebooks" rel="noopener" target="_blank"><strong>Case-study notebooks</strong><span>Complete worked examples in the repository.</span></a><a data-doc-link="" href="#installation"><strong>Installation</strong><span>Install the package from PyPI or locally.</span></a><a data-doc-link="" href="#getting-started"><strong>Getting Started</strong><span>Run a minimal accessibility workflow.</span></a><a data-doc-link="" href="#user-reference"><strong>User Reference</strong><span>Browse functions by module.</span></a><a data-doc-link="" href="#examples"><strong>Examples</strong><span>Open individual notebooks directly.</span></a></div>
+</section>
+</section><section class="doc-page" data-title="Installation" id="installation">
+<header class="page-header searchable" data-page="installation" data-search-title="Installation">
+<p class="eyebrow">accessX 0.1.1</p>
+<h1>Installation</h1>
+<p class="lead">Install accessX from PyPI or from a local source checkout.</p>
+</header>
+<section class="doc-panel searchable" data-search-title="PyPI installation">
+<h2>Install from PyPI</h2>
+<p>Install the current release with pip.</p>
+<div class="code-block"><button class="copy" type="button">Copy</button><pre><code>pip install accessx</code></pre></div>
+</section>
+<section class="doc-panel searchable" data-search-title="Local development installation">
+<h2>Install from source</h2>
+<p>For local development from a cloned repository, install the package in editable mode.</p>
+<div class="code-block"><button class="copy" type="button">Copy</button><pre><code>git clone https://github.com/TransformTransport/accessX.git
+cd accessX
+pip install -e .</code></pre></div>
+<p>Python 3.10 or newer is required.</p>
+</section>
+</section><section class="doc-page" data-title="Getting Started" id="getting-started">
+<header class="page-header searchable" data-page="getting-started" data-search-title="Getting Started">
+<p class="eyebrow">accessX 0.1.1</p>
+<h1>Getting Started</h1>
+<p class="lead">Run a minimal end-to-end accessibility workflow.</p>
+</header>
+<section class="doc-panel searchable" data-search-title="Minimal workflow code example">
+<h2>Minimal workflow</h2>
+<p>This example creates origins, builds a walking network, adds a time cost, retrieves POIs, and counts reachable opportunities.</p>
+<div class="code-block"><button class="copy" type="button">Copy</button><pre><code>import accessx as acx
+import osmnx as ox
+
+# Area of interest and origins
+aoi = ox.geocode_to_gdf("Municipality of Athens, Greece")
+hexes = acx.make_hex_grid(aoi, resolution=9)
+
+# Walking network and travel-time cost
+graph = acx.build_network(
+    aoi,
+    city_epsg=2100,
+    buffer_m=1000,
+    network_type="walk",
+    show_progress=True,
+)
+graph = acx.add_time_cost_constant_speed(
+    graph,
+    speed_kmh=4.5,
+    cost_col="walk_time",
+)
+
+# OpenStreetMap POIs grouped into analytical categories
+pois = acx.get_pois_osm(
+    aoi,
+    poi_groups={
+        "healthcare": {"amenity": ["pharmacy", "clinic", "doctors"]},
+        "open_space": {"leisure": ["park", "playground", "garden"]},
+    },
+    show_progress=True,
+)
+
+# Cumulative opportunities within 15 walking minutes
+counts = acx.count_accessible_pois(
+    graph,
+    hexes.to_crs(2100),
+    pois.to_crs(2100),
+    max_cost=15,
+    cost_attr="walk_time",
+    show_progress=True,
+)</code></pre></div>
+</section>
+</section><section class="doc-page" data-title="User Reference" id="user-reference">
+<header class="page-header searchable" data-page="user-reference" data-search-title="User Reference">
+<p class="eyebrow">accessX 0.1.1</p>
+<h1>User Reference</h1>
+<p class="lead">Public functions grouped by module, following the structure of Python package reference documentation.</p>
+</header>
+<section class="doc-panel searchable" data-search-title="User Reference overview">
+<p>This is the User Reference for the <code>accessX</code> package. It describes the public API exposed by the package and groups functions by module.</p>
+<div class="module-grid"><a data-doc-link="" href="#accessx-aoi-module"><code>accessx.aoi</code><span>Prepare analysis areas and origin geometries.</span></a><a data-doc-link="" href="#accessx-graph-module"><code>accessx.graph</code><span>Build, save, and reload OSMnx street graphs.</span></a><a data-doc-link="" href="#accessx-cost-module"><code>accessx.cost</code><span>Create and assign edge-level network costs.</span></a><a data-doc-link="" href="#accessx-poi-module"><code>accessx.poi</code><span>Retrieve and standardize OpenStreetMap points of interest.</span></a><a data-doc-link="" href="#accessx-population-module"><code>accessx.population</code><span>Download, convert, and allocate population data.</span></a><a data-doc-link="" href="#accessx-accessibility-module"><code>accessx.accessibility</code><span>Estimate origin-side accessibility and destination-side co-accessibility.</span></a><a data-doc-link="" href="#accessx-isochrone-module"><code>accessx.isochrone</code><span>Generate origin-level reachable-area polygons.</span></a><a data-doc-link="" href="#accessx-equity-module"><code>accessx.equity</code><span>Evaluate distributions and threshold attainment.</span></a><a data-doc-link="" href="#accessx-io-module"><code>accessx.io</code><span>Read and write geospatial tabular data.</span></a></div>
+</section>
+<details class="module-ref searchable" data-search-title="accessx.aoi" id="accessx-aoi-module">
+<summary><code>accessx.aoi</code><span>Prepare analysis areas and origin geometries.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title="accessx.aoi.load_aoi(*, filepath=None, bbox=None, input_crs=None, buffer_m=0.0, utm_crs=None, dissolve=True, target_crs=4326, save_path=None)" id="load-aoi">
+<h3><code>accessx.aoi.load_aoi(*, filepath=None, bbox=None, input_crs=None, buffer_m=0.0, utm_crs=None, dissolve=True, target_crs=4326, save_path=None)</code></h3>
+<p>Load an area of interest from a vector file or bounding box, optionally buffer it in a projected CRS, dissolve it, reproject it, and save it.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>filepath</code></td><td>str | pathlib.Path | None</td><td>Path to a vector file readable by GeoPandas. Provide exactly one of <code>filepath</code> or <code>bbox</code>.</td></tr><tr><td><code>bbox</code></td><td>tuple[float, float, float, float] | None</td><td>Bounding box as <code>(minx, miny, maxx, maxy)</code>. Interpreted in <code>input_crs</code>, or EPSG:4326 when <code>input_crs</code> is not supplied.</td></tr><tr><td><code>input_crs</code></td><td>int | str | None</td><td>CRS to assign to the input geometry when the source has no CRS or needs to be overridden.</td></tr><tr><td><code>buffer_m</code></td><td>float</td><td>Metric buffer distance. The buffer is applied after reprojecting to <code>utm_crs</code>.</td></tr><tr><td><code>utm_crs</code></td><td>int | str | None</td><td>Projected CRS used for metric operations. Required when <code>buffer_m</code> is not zero.</td></tr><tr><td><code>dissolve</code></td><td>bool</td><td>If True, dissolve multiple input geometries into a single geometry.</td></tr><tr><td><code>target_crs</code></td><td>int | str</td><td>CRS of the returned AOI. Defaults to EPSG:4326.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional path to save the resulting AOI.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — AOI geometry in <code>target_crs</code>.</p>
+</article><article class="function-ref searchable" data-search-title="accessx.aoi.make_hex_grid(aoi, *, resolution=9, clip=True, return_geoms=True, save_path=None)" id="make-hex-grid">
+<h3><code>accessx.aoi.make_hex_grid(aoi, *, resolution=9, clip=True, return_geoms=True, save_path=None)</code></h3>
+<p>Create an H3 hexagonal grid from an AOI.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>aoi</code></td><td>geopandas.GeoDataFrame</td><td>AOI polygon layer. It is converted to EPSG:4326 before H3 processing.</td></tr><tr><td><code>resolution</code></td><td>int</td><td>H3 resolution.</td></tr><tr><td><code>clip</code></td><td>bool</td><td>If True, clip generated cells to the AOI footprint.</td></tr><tr><td><code>return_geoms</code></td><td>bool</td><td>If True, return polygon geometries for the H3 cells.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional path to save the hex grid.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — Hex grid with a normalized <code>hex_id</code> column and, when requested, geometry in EPSG:4326.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.graph" id="accessx-graph-module">
+<summary><code>accessx.graph</code><span>Build, save, and reload OSMnx street graphs.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title='accessx.graph.build_network(AOI, *, city_epsg, buffer_m=0.0, network_type="walk", simplify=False, retain_all=True, remove_isolates=True, show_progress=False)' id="build-network">
+<h3><code>accessx.graph.build_network(AOI, *, city_epsg, buffer_m=0.0, network_type="walk", simplify=False, retain_all=True, remove_isolates=True, show_progress=False)</code></h3>
+<p>Build an OSMnx graph from an AOI, optionally buffer the AOI, clean isolates, and project the network to a local CRS.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>AOI</code></td><td>geopandas.GeoDataFrame</td><td>AOI polygon layer. Multiple rows are dissolved before requesting the network.</td></tr><tr><td><code>city_epsg</code></td><td>int | str</td><td>Projected CRS for metric computations and the returned graph.</td></tr><tr><td><code>buffer_m</code></td><td>float</td><td>Metric buffer applied to the AOI before downloading the network.</td></tr><tr><td><code>network_type</code></td><td>str</td><td>OSMnx network type, for example <code>"walk"</code>, <code>"bike"</code>, or <code>"drive"</code>.</td></tr><tr><td><code>simplify</code></td><td>bool</td><td>Whether OSMnx should simplify the graph topology.</td></tr><tr><td><code>retain_all</code></td><td>bool</td><td>If True, retain all graph components returned by OSMnx.</td></tr><tr><td><code>remove_isolates</code></td><td>bool</td><td>If True, remove isolated nodes with degree 0.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show high-level progress while preparing, downloading, cleaning, and projecting the graph.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>networkx.MultiDiGraph</code> — Projected graph with CRS stored in <code>G.graph["crs"]</code>.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.graph.save_graph(G, *, out_dir, base_name="street", save_nodes=True, save_edges=True, driver="GeoJSON")' id="save-graph">
+<h3><code>accessx.graph.save_graph(G, *, out_dir, base_name="street", save_nodes=True, save_edges=True, driver="GeoJSON")</code></h3>
+<p>Save an OSMnx graph as node and edge files.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>G</code></td><td>networkx.MultiDiGraph</td><td>Input graph.</td></tr><tr><td><code>out_dir</code></td><td>str | pathlib.Path</td><td>Output directory.</td></tr><tr><td><code>base_name</code></td><td>str</td><td>Base filename. The suffixes <code>_nodes_OSM</code> and <code>_edges_OSM</code> are added automatically.</td></tr><tr><td><code>save_nodes</code></td><td>bool</td><td>If True, save the node GeoDataFrame.</td></tr><tr><td><code>save_edges</code></td><td>bool</td><td>If True, save the edge GeoDataFrame.</td></tr><tr><td><code>driver</code></td><td>str</td><td>OGR driver passed to GeoPandas. Defaults to GeoJSON.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>None</code> — Writes files to disk.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.graph.load_graph(*, out_dir=None, base_name=None, nodes_path=None, edges_path=None, crs=None, node_id_col="osmid")' id="load-graph">
+<h3><code>accessx.graph.load_graph(*, out_dir=None, base_name=None, nodes_path=None, edges_path=None, crs=None, node_id_col="osmid")</code></h3>
+<p>Load saved node and edge files and rebuild a graph.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>out_dir</code></td><td>str | pathlib.Path | None</td><td>Directory containing graph files saved with <code>save_graph</code>.</td></tr><tr><td><code>base_name</code></td><td>str | None</td><td>Base filename used when the graph was saved.</td></tr><tr><td><code>nodes_path</code></td><td>str | pathlib.Path | None</td><td>Explicit path to the saved nodes file. Use together with <code>edges_path</code>.</td></tr><tr><td><code>edges_path</code></td><td>str | pathlib.Path | None</td><td>Explicit path to the saved edges file. Use together with <code>nodes_path</code>.</td></tr><tr><td><code>crs</code></td><td>int | str | None</td><td>Optional CRS to set or enforce while reading the files.</td></tr><tr><td><code>node_id_col</code></td><td>str</td><td>Column in the nodes file to use as the node index. Defaults to <code>osmid</code>.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>networkx.MultiDiGraph</code> — Rebuilt graph with CRS metadata when available.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.cost" id="accessx-cost-module">
+<summary><code>accessx.cost</code><span>Create and assign edge-level network costs.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title="accessx.cost.add_edge_cost(G, *, cost_fn, cost_col, show_progress=False)" id="add-edge-cost">
+<h3><code>accessx.cost.add_edge_cost(G, *, cost_fn, cost_col, show_progress=False)</code></h3>
+<p>Add or overwrite a numeric edge-cost attribute using a user-provided function.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>G</code></td><td>networkx.MultiDiGraph</td><td>Projected graph. The graph must not be unprojected EPSG:4326.</td></tr><tr><td><code>cost_fn</code></td><td>Callable[[dict], int | float]</td><td>Function receiving an edge attribute dictionary and returning a numeric cost.</td></tr><tr><td><code>cost_col</code></td><td>str</td><td>Name of the edge attribute where the computed cost will be stored.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while assigning edge costs.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>networkx.MultiDiGraph</code> — The input graph with the new or updated edge attribute.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.cost.add_time_cost_constant_speed(G, *, speed_kmh=4.5, cost_col="time_min", length_col="length", show_progress=False)' id="add-time-cost-constant-speed">
+<h3><code>accessx.cost.add_time_cost_constant_speed(G, *, speed_kmh=4.5, cost_col="time_min", length_col="length", show_progress=False)</code></h3>
+<p>Add travel-time cost in minutes assuming a constant travel speed.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>G</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with edge lengths.</td></tr><tr><td><code>speed_kmh</code></td><td>float</td><td>Travel speed in km/h. Must be greater than zero.</td></tr><tr><td><code>cost_col</code></td><td>str</td><td>Name of the output edge attribute.</td></tr><tr><td><code>length_col</code></td><td>str</td><td>Edge attribute containing length in meters.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while assigning edge costs.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>networkx.MultiDiGraph</code> — Graph with a minute-based time-cost attribute.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.cost.add_slope_based_time(*, slope_col="slope_pct", length_col="length", min_speed_mps=0.05, default_slope=0.0)' id="add-slope-based-time">
+<h3><code>accessx.cost.add_slope_based_time(*, slope_col="slope_pct", length_col="length", min_speed_mps=0.05, default_slope=0.0)</code></h3>
+<p>Return a cost function that computes walking time with Tobler’s hiking function.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>slope_col</code></td><td>str</td><td>Edge attribute containing slope in percent.</td></tr><tr><td><code>length_col</code></td><td>str</td><td>Edge attribute containing length in meters.</td></tr><tr><td><code>min_speed_mps</code></td><td>float</td><td>Minimum walking speed used to avoid division by zero or unrealistic times.</td></tr><tr><td><code>default_slope</code></td><td>float</td><td>Fallback slope value when an edge does not contain <code>slope_col</code>.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>Callable[[dict], float]</code> — Cost function that maps an edge attribute dictionary to travel time in minutes.</p>
+<p class="note">Use the returned function with <code>add_edge_cost</code>.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.poi" id="accessx-poi-module">
+<summary><code>accessx.poi</code><span>Retrieve and standardize OpenStreetMap points of interest.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title='accessx.poi.get_pois_osm(AOI_wgs84, *, osm_tags=None, poi_groups=None, keep_geom_types=("Point", "Polygon", "MultiPolygon"), raise_on_empty=False, max_retries=2, show_progress=False, return_report=False, columns="minimal")' id="get-pois-osm">
+<h3><code>accessx.poi.get_pois_osm(AOI_wgs84, *, osm_tags=None, poi_groups=None, keep_geom_types=("Point", "Polygon", "MultiPolygon"), raise_on_empty=False, max_retries=2, show_progress=False, return_report=False, columns="minimal")</code></h3>
+<p>Collect POIs from OpenStreetMap within an AOI using direct OSM tags or custom analytical groups.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>AOI_wgs84</code></td><td>geopandas.GeoDataFrame</td><td>Area of interest. It is converted to EPSG:4326; the first geometry is used as the query polygon.</td></tr><tr><td><code>osm_tags</code></td><td>dict | None</td><td>Direct OSM tag query. Keys are OSM tag keys; values can be True, a string, or a list/tuple/set of strings.</td></tr><tr><td><code>poi_groups</code></td><td>dict | None</td><td>Custom groups where top-level keys become output categories and values are OSM tag dictionaries.</td></tr><tr><td><code>keep_geom_types</code></td><td>tuple[str, ...]</td><td>Geometry types retained from the OSM response.</td></tr><tr><td><code>raise_on_empty</code></td><td>bool</td><td>If True, raise an error when no POIs are found for any selected tag.</td></tr><tr><td><code>max_retries</code></td><td>int</td><td>Number of retry attempts for transient OSM/Overpass failures per OSM tag query.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress over OSM queries.</td></tr><tr><td><code>return_report</code></td><td>bool</td><td>If True, return <code>(pois, report)</code> instead of only the POI GeoDataFrame.</td></tr><tr><td><code>columns</code></td><td>"minimal" | "all" | list[str]</td><td>Controls returned columns. <code>"minimal"</code> keeps the standard accessX columns; <code>"all"</code> keeps all OSMnx columns.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame | tuple</code> — POIs with standardized columns such as <code>id</code>, <code>osmid</code>, <code>category</code>, <code>subcategory</code>, and <code>geometry</code>.</p>
+</article><article class="function-ref searchable" data-search-title="accessx.poi.POIQueryError" id="poi-query-error">
+<h3><code>accessx.poi.POIQueryError</code></h3>
+<p>Exception raised when one or more OSM POI tag queries fail after retries.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>*args</code>, <code>**kwargs</code></td><td>Exception arguments</td><td>Standard Python exception arguments. This class adds a named accessX error type for failed POI queries.</td></tr></tbody></table><h4>Returns</h4><p><code>RuntimeError subclass</code> — Raised to make incomplete POI retrieval explicit.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.population" id="accessx-population-module">
+<summary><code>accessx.population</code><span>Download, convert, and allocate population data.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title="accessx.population.infer_country_from_geometry(*, aoi=None, hexes=None)" id="infer-country-from-geometry">
+<h3><code>accessx.population.infer_country_from_geometry(*, aoi=None, hexes=None)</code></h3>
+<p>Infer the country that overlaps the supplied AOI or hex grid the most.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>aoi</code></td><td>geopandas.GeoDataFrame | None</td><td>AOI geometry. Provide exactly one of <code>aoi</code> or <code>hexes</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame | None</td><td>Hex grid geometry. Provide exactly one of <code>aoi</code> or <code>hexes</code>.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>dict[str, str]</code> — Dictionary with <code>iso3</code> and <code>country</code>.</p>
+</article><article class="function-ref searchable" data-search-title="accessx.population.get_worldpop_raster(*, aoi=None, hexes=None, year, clip=True, save_path=None, show_progress=True)" id="get-worldpop-raster">
+<h3><code>accessx.population.get_worldpop_raster(*, aoi=None, hexes=None, year, clip=True, save_path=None, show_progress=True)</code></h3>
+<p>Download a WorldPop raster for the country covering the supplied geometry, optionally clipped to the AOI or hex extent.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>aoi</code></td><td>geopandas.GeoDataFrame | None</td><td>AOI geometry. Provide exactly one of <code>aoi</code> or <code>hexes</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame | None</td><td>Hex grid geometry. Provide exactly one of <code>aoi</code> or <code>hexes</code>.</td></tr><tr><td><code>year</code></td><td>int</td><td>WorldPop population year to request.</td></tr><tr><td><code>clip</code></td><td>bool</td><td>If True, clip the country raster to the supplied geometry before returning it.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional output raster path. If omitted, a temporary file path is used.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show a download progress bar when tqdm is available.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>pathlib.Path</code> — Path to the downloaded or clipped raster.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.population.raster_to_population_grid(population_raster, *, band=1, population_col="population")' id="raster-to-population-grid">
+<h3><code>accessx.population.raster_to_population_grid(population_raster, *, band=1, population_col="population")</code></h3>
+<p>Convert a population raster into polygon cells with population values.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>population_raster</code></td><td>str | pathlib.Path</td><td>Path to a population raster.</td></tr><tr><td><code>band</code></td><td>int</td><td>Raster band to read.</td></tr><tr><td><code>population_col</code></td><td>str</td><td>Name of the output population column.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — Raster-cell polygons with a population column.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.population.map_population_grid_to_hexes(hexes, population_grid, *, metric_crs, id_col="hex_id", population_col="population", population_cols=None, save_path=None)' id="map-population-grid-to-hexes">
+<h3><code>accessx.population.map_population_grid_to_hexes(hexes, population_grid, *, metric_crs, id_col="hex_id", population_col="population", population_cols=None, save_path=None)</code></h3>
+<p>Allocate vector population-grid totals to hexes using area-weighted overlap.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Hex grid with <code>id_col</code> and geometry.</td></tr><tr><td><code>population_grid</code></td><td>geopandas.GeoDataFrame</td><td>Population-cell polygons with one or more population columns.</td></tr><tr><td><code>metric_crs</code></td><td>int | str</td><td>Projected CRS used for area calculations.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Hex identifier column.</td></tr><tr><td><code>population_col</code></td><td>str</td><td>Single population column to allocate when <code>population_cols</code> is not provided.</td></tr><tr><td><code>population_cols</code></td><td>str | iterable[str] | None</td><td>One or more population columns to allocate.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional path to save the enriched hex grid.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — Hex grid with allocated population columns.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.population.map_population_to_hexes(hexes, population_data, *, metric_crs, id_col="hex_id", band=1, population_col="population", population_cols=None, save_path=None)' id="map-population-to-hexes">
+<h3><code>accessx.population.map_population_to_hexes(hexes, population_data, *, metric_crs, id_col="hex_id", band=1, population_col="population", population_cols=None, save_path=None)</code></h3>
+<p>Allocate raster or vector population data to hexes using area-weighted overlap.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Hex grid with <code>id_col</code> and geometry.</td></tr><tr><td><code>population_data</code></td><td>str | pathlib.Path | geopandas.GeoDataFrame</td><td>Raster path or pre-built population-cell GeoDataFrame.</td></tr><tr><td><code>metric_crs</code></td><td>int | str</td><td>Projected CRS used for area calculations.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Hex identifier column.</td></tr><tr><td><code>band</code></td><td>int</td><td>Raster band to read when <code>population_data</code> is a raster path.</td></tr><tr><td><code>population_col</code></td><td>str</td><td>Single population column name.</td></tr><tr><td><code>population_cols</code></td><td>str | iterable[str] | None</td><td>Multiple population columns. Supported only when <code>population_data</code> is a GeoDataFrame.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional path to save the enriched hex grid.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — Hex grid with allocated population columns.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.accessibility" id="accessx-accessibility-module">
+<summary><code>accessx.accessibility</code><span>Estimate origin-side accessibility and destination-side co-accessibility.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title='accessx.accessibility.count_accessible_pois(graph, hexes, pois, *, max_cost, cost_attr, id_col="hex_id", category_col="category", max_distance_from_graph=200.0, show_progress=False)' id="count-accessible-pois">
+<h3><code>accessx.accessibility.count_accessible_pois(graph, hexes, pois, *, max_cost, cost_attr, id_col="hex_id", category_col="category", max_distance_from_graph=200.0, show_progress=False)</code></h3>
+<p>Count reachable POIs by category for each origin using graph shortest-path costs.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>graph</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with CRS metadata and a numeric edge attribute named by <code>cost_attr</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Origin geometries with <code>id_col</code>. Polygon origins route from their centroid.</td></tr><tr><td><code>pois</code></td><td>geopandas.GeoDataFrame</td><td>Destination geometries with <code>category_col</code>.</td></tr><tr><td><code>max_cost</code></td><td>int | float</td><td>Maximum routing cost cutoff. Units must match <code>cost_attr</code>.</td></tr><tr><td><code>cost_attr</code></td><td>str</td><td>Edge attribute used as the shortest-path weight.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Origin identifier column.</td></tr><tr><td><code>category_col</code></td><td>str</td><td>POI category column.</td></tr><tr><td><code>max_distance_from_graph</code></td><td>float</td><td>Maximum allowed snapping distance from origin centroid to nearest graph node, in graph CRS units.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while routing from origins.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — One row per origin with <code>count_*</code> columns by POI category.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.accessibility.compute_nearest_poi_cost(graph, hexes, pois, *, max_cost, cost_attr, id_col="hex_id", category_col="category", poi_id_col="id", max_distance_from_graph=200.0, number_of_nearest=None, output="list", show_progress=False)' id="compute-nearest-poi-cost">
+<h3><code>accessx.accessibility.compute_nearest_poi_cost(graph, hexes, pois, *, max_cost, cost_attr, id_col="hex_id", category_col="category", poi_id_col="id", max_distance_from_graph=200.0, number_of_nearest=None, output="list", show_progress=False)</code></h3>
+<p>Compute nearest reachable POI costs for each origin and category.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>graph</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with CRS metadata and a numeric edge attribute named by <code>cost_attr</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Origin geometries with <code>id_col</code>.</td></tr><tr><td><code>pois</code></td><td>geopandas.GeoDataFrame</td><td>Destination geometries with <code>category_col</code> and <code>poi_id_col</code>.</td></tr><tr><td><code>max_cost</code></td><td>int | float</td><td>Maximum routing cost cutoff. Units must match <code>cost_attr</code>.</td></tr><tr><td><code>cost_attr</code></td><td>str</td><td>Edge attribute used as the shortest-path weight.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Origin identifier column.</td></tr><tr><td><code>category_col</code></td><td>str</td><td>POI category column.</td></tr><tr><td><code>poi_id_col</code></td><td>str</td><td>POI identifier column.</td></tr><tr><td><code>max_distance_from_graph</code></td><td>float</td><td>Maximum allowed snapping distance from origin centroid to nearest graph node.</td></tr><tr><td><code>number_of_nearest</code></td><td>int | None</td><td>Number of nearest reachable POIs to return per category. If None, return only the nearest.</td></tr><tr><td><code>output</code></td><td>{"list", "long", "wide"}</td><td>Output layout. <code>"list"</code> keeps list columns; <code>"long"</code> returns one row per origin/category/rank; <code>"wide"</code> creates cost and POI columns.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while routing from origins.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame | pandas.DataFrame</code> — Nearest POI costs in the selected output format.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.accessibility.compute_hansen_accessibility(graph, hexes, pois, *, max_cost, cost_attr, id_col="hex_id", category_col="category", poi_weight_col=None, category_weights=None, default_poi_weight=1.0, max_distance_from_graph=200.0, beta=0.15, show_progress=False)' id="compute-hansen-accessibility">
+<h3><code>accessx.accessibility.compute_hansen_accessibility(graph, hexes, pois, *, max_cost, cost_attr, id_col="hex_id", category_col="category", poi_weight_col=None, category_weights=None, default_poi_weight=1.0, max_distance_from_graph=200.0, beta=0.15, show_progress=False)</code></h3>
+<p>Compute Hansen accessibility using exponential distance decay.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>graph</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with CRS metadata and a numeric edge attribute named by <code>cost_attr</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Origin geometries with <code>id_col</code>.</td></tr><tr><td><code>pois</code></td><td>geopandas.GeoDataFrame</td><td>Destination geometries with <code>category_col</code> and optional POI weights.</td></tr><tr><td><code>max_cost</code></td><td>int | float</td><td>Maximum routing cost cutoff.</td></tr><tr><td><code>cost_attr</code></td><td>str</td><td>Edge attribute used as the shortest-path weight.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Origin identifier column.</td></tr><tr><td><code>category_col</code></td><td>str</td><td>POI category column.</td></tr><tr><td><code>poi_weight_col</code></td><td>str | None</td><td>Optional numeric POI opportunity weight, such as capacity or size.</td></tr><tr><td><code>category_weights</code></td><td>dict[str, float] | None</td><td>Optional category-level multipliers.</td></tr><tr><td><code>default_poi_weight</code></td><td>float</td><td>Fallback opportunity weight used when <code>poi_weight_col</code> is not supplied or contains invalid values.</td></tr><tr><td><code>max_distance_from_graph</code></td><td>float</td><td>Maximum allowed snapping distance from origin centroid to nearest graph node.</td></tr><tr><td><code>beta</code></td><td>float</td><td>Exponential decay parameter in <code>exp(-beta * cost)</code>.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while routing from origins.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — One row per origin with <code>hansen_*</code> columns and <code>hansen_total</code>.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.accessibility.compute_2sfca_accessibility(graph, hexes, pois, *, max_cost, cost_attr, demand_col, id_col="hex_id", category_col="category", supply_col=None, default_supply=1.0, category_weights=None, max_distance_from_graph=200.0, decay="binary", beta=0.15, show_progress=False)' id="compute-2sfca-accessibility">
+<h3><code>accessx.accessibility.compute_2sfca_accessibility(graph, hexes, pois, *, max_cost, cost_attr, demand_col, id_col="hex_id", category_col="category", supply_col=None, default_supply=1.0, category_weights=None, max_distance_from_graph=200.0, decay="binary", beta=0.15, show_progress=False)</code></h3>
+<p>Compute two-step floating catchment area accessibility by comparing destination supply to reachable demand.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>graph</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with CRS metadata and a numeric edge attribute named by <code>cost_attr</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Origin/demand geometries with <code>id_col</code> and <code>demand_col</code>.</td></tr><tr><td><code>pois</code></td><td>geopandas.GeoDataFrame</td><td>Destination/supply geometries with <code>category_col</code> and optional <code>supply_col</code>.</td></tr><tr><td><code>max_cost</code></td><td>int | float</td><td>Maximum routing cost cutoff.</td></tr><tr><td><code>cost_attr</code></td><td>str</td><td>Edge attribute used as the shortest-path weight.</td></tr><tr><td><code>demand_col</code></td><td>str</td><td>Demand column in <code>hexes</code>, typically population.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Origin identifier column.</td></tr><tr><td><code>category_col</code></td><td>str</td><td>POI category column.</td></tr><tr><td><code>supply_col</code></td><td>str | None</td><td>Optional numeric supply column in <code>pois</code>.</td></tr><tr><td><code>default_supply</code></td><td>float</td><td>Supply value assigned when <code>supply_col</code> is not supplied.</td></tr><tr><td><code>category_weights</code></td><td>dict[str, float] | None</td><td>Optional category-level supply multipliers.</td></tr><tr><td><code>max_distance_from_graph</code></td><td>float</td><td>Maximum allowed snapping distance from origins to the graph.</td></tr><tr><td><code>decay</code></td><td>{"binary", "exp"}</td><td>Catchment weighting. <code>"binary"</code> treats all reachable demand equally; <code>"exp"</code> applies exponential decay.</td></tr><tr><td><code>beta</code></td><td>float</td><td>Exponential decay parameter used when <code>decay="exp"</code>.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while routing.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — One row per origin with 2SFCA accessibility scores by POI category.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.accessibility.compute_co_accessibility(graph, hexes, pois, *, max_cost, cost_attr, population_groups, id_col="hex_id", poi_id_col="id", category_col="category", keep_poi_cols=None, max_distance_from_graph=200.0, approach="cumulative", beta=0.15, show_progress=False)' id="compute-co-accessibility">
+<h3><code>accessx.accessibility.compute_co_accessibility(graph, hexes, pois, *, max_cost, cost_attr, population_groups, id_col="hex_id", poi_id_col="id", category_col="category", keep_poi_cols=None, max_distance_from_graph=200.0, approach="cumulative", beta=0.15, show_progress=False)</code></h3>
+<p>Compute destination-side co-accessibility: how many people or groups can reach the same POI.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>graph</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with CRS metadata and a numeric edge attribute named by <code>cost_attr</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Origin geometries with population group columns.</td></tr><tr><td><code>pois</code></td><td>geopandas.GeoDataFrame</td><td>Destination geometries with <code>poi_id_col</code> and optionally <code>category_col</code>.</td></tr><tr><td><code>max_cost</code></td><td>int | float</td><td>Maximum routing cost cutoff.</td></tr><tr><td><code>cost_attr</code></td><td>str</td><td>Edge attribute used as the shortest-path weight.</td></tr><tr><td><code>population_groups</code></td><td>str | iterable[str]</td><td>Population column or columns in <code>hexes</code> to aggregate around each POI.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Origin identifier column.</td></tr><tr><td><code>poi_id_col</code></td><td>str</td><td>POI identifier column.</td></tr><tr><td><code>category_col</code></td><td>str</td><td>POI category column. Preserved when present.</td></tr><tr><td><code>keep_poi_cols</code></td><td>iterable[str] | None</td><td>Additional POI columns to preserve in the output.</td></tr><tr><td><code>max_distance_from_graph</code></td><td>float</td><td>Maximum allowed snapping distance from origins to the graph.</td></tr><tr><td><code>approach</code></td><td>{"cumulative", "hansen"}</td><td>Aggregation approach. <code>"cumulative"</code> sums reachable population; <code>"hansen"</code> applies exponential decay.</td></tr><tr><td><code>beta</code></td><td>float</td><td>Decay parameter used when <code>approach="hansen"</code>.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while routing.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — One row per POI with accessible population columns by population group.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.isochrone" id="accessx-isochrone-module">
+<summary><code>accessx.isochrone</code><span>Generate origin-level reachable-area polygons.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title='accessx.isochrone.calculate_isochrones(G, hexes, *, max_cost, interval_size=None, cost_attr, city_epsg, id_col="hex_id", max_distance=200.0, method="edges", edge_buff=25.0, infill=False, save_dir=None, base_name="walksheds", n_jobs=1, show_progress=False)' id="calculate-isochrones">
+<h3><code>accessx.isochrone.calculate_isochrones(G, hexes, *, max_cost, interval_size=None, cost_attr, city_epsg, id_col="hex_id", max_distance=200.0, method="edges", edge_buff=25.0, infill=False, save_dir=None, base_name="walksheds", n_jobs=1, show_progress=False)</code></h3>
+<p>Generate cost-threshold isochrone polygons for each origin.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>G</code></td><td>networkx.MultiDiGraph</td><td>Projected graph with CRS metadata and a numeric edge attribute named by <code>cost_attr</code>.</td></tr><tr><td><code>hexes</code></td><td>geopandas.GeoDataFrame</td><td>Origin geometries. CRS must match <code>G.graph["crs"]</code>.</td></tr><tr><td><code>max_cost</code></td><td>int | float</td><td>Maximum routing cost cutoff.</td></tr><tr><td><code>interval_size</code></td><td>int | float | None</td><td>Threshold interval. Example: <code>max_cost=15</code>, <code>interval_size=5</code> produces 5, 10, and 15.</td></tr><tr><td><code>cost_attr</code></td><td>str</td><td>Edge attribute used as the shortest-path weight.</td></tr><tr><td><code>city_epsg</code></td><td>int | str</td><td>Projected city CRS. Retained for compatibility with the accessX workflow.</td></tr><tr><td><code>id_col</code></td><td>str</td><td>Origin identifier column.</td></tr><tr><td><code>max_distance</code></td><td>float</td><td>Maximum allowed snapping distance from origin to nearest graph node.</td></tr><tr><td><code>method</code></td><td>{"edges", "hull"}</td><td>Polygon construction method. <code>"edges"</code> buffers reachable edges; <code>"hull"</code> uses the convex hull of reachable nodes.</td></tr><tr><td><code>edge_buff</code></td><td>float</td><td>Buffer distance around reachable edges when <code>method="edges"</code>.</td></tr><tr><td><code>infill</code></td><td>bool</td><td>If True, attempt to fill holes in edge-buffer polygons.</td></tr><tr><td><code>save_dir</code></td><td>str | pathlib.Path | None</td><td>Optional directory to save a GeoPackage with origin and walkshed layers.</td></tr><tr><td><code>base_name</code></td><td>str</td><td>Base filename used when saving isochrone outputs.</td></tr><tr><td><code>n_jobs</code></td><td>int</td><td>Number of worker processes. Use 1 for serial execution.</td></tr><tr><td><code>show_progress</code></td><td>bool</td><td>If True, show progress while calculating isochrones.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — Wide GeoDataFrame with origin geometry and one geometry column per threshold.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.equity" id="accessx-equity-module">
+<summary><code>accessx.equity</code><span>Evaluate distributions and threshold attainment.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title="accessx.equity.calculate_lorenz(properties, df, *, weights=None, fillna_value=0.0, clip_nonnegative=True)" id="calculate-lorenz">
+<h3><code>accessx.equity.calculate_lorenz(properties, df, *, weights=None, fillna_value=0.0, clip_nonnegative=True)</code></h3>
+<p>Compute Lorenz-curve inputs and Gini coefficients for one or more accessibility indicators.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>properties</code></td><td>str | iterable[str]</td><td>Column name or names to evaluate.</td></tr><tr><td><code>df</code></td><td>pandas.DataFrame | geopandas.GeoDataFrame</td><td>Data containing accessibility indicators and optional weights.</td></tr><tr><td><code>weights</code></td><td>str | None</td><td>Optional weight column, typically population.</td></tr><tr><td><code>fillna_value</code></td><td>float</td><td>Value used to fill missing indicator values before computation.</td></tr><tr><td><code>clip_nonnegative</code></td><td>bool</td><td>If True, clip negative values to zero before computing distributions.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>tuple</code> — Lorenz arrays, population shares, Gini values, and sorted values for each property.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.equity.compute_sufficientarian_score(df, *, thresholds_ge=None, thresholds_le=None, weights=None, indicator_suffix="_sufficient", score_col="sufficient_score", weighted_score_col="sufficient_score_weighted", fillna_value=0.0, add_indicator_cols=True)' id="compute-sufficientarian-score">
+<h3><code>accessx.equity.compute_sufficientarian_score(df, *, thresholds_ge=None, thresholds_le=None, weights=None, indicator_suffix="_sufficient", score_col="sufficient_score", weighted_score_col="sufficient_score_weighted", fillna_value=0.0, add_indicator_cols=True)</code></h3>
+<p>Score whether rows meet explicit sufficiency thresholds.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>df</code></td><td>pandas.DataFrame | geopandas.GeoDataFrame</td><td>Input data containing accessibility indicators.</td></tr><tr><td><code>thresholds_ge</code></td><td>dict[str, float] | None</td><td>Minimum acceptable thresholds. A row is sufficient when the column value is greater than or equal to the threshold.</td></tr><tr><td><code>thresholds_le</code></td><td>dict[str, float] | None</td><td>Maximum acceptable thresholds. A row is sufficient when the column value is less than or equal to the threshold.</td></tr><tr><td><code>weights</code></td><td>str | None</td><td>Optional weight column used to compute weighted scores.</td></tr><tr><td><code>indicator_suffix</code></td><td>str</td><td>Suffix used for generated boolean sufficiency columns.</td></tr><tr><td><code>score_col</code></td><td>str</td><td>Name of the unweighted sufficiency score column.</td></tr><tr><td><code>weighted_score_col</code></td><td>str</td><td>Name of the weighted sufficiency score column.</td></tr><tr><td><code>fillna_value</code></td><td>float</td><td>Value used to fill missing indicator values before threshold checks.</td></tr><tr><td><code>add_indicator_cols</code></td><td>bool</td><td>If True, add per-indicator sufficiency columns.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>pandas.DataFrame | geopandas.GeoDataFrame</code> — Copy of the input data with sufficiency indicators and score columns.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.equity.plot_lorenz_curves(*, df, properties, weights=None, title=None, show_gini_in_legend=True, palette="tab10", figsize=(10, 8), save_path=None)' id="plot-lorenz-curves">
+<h3><code>accessx.equity.plot_lorenz_curves(*, df, properties, weights=None, title=None, show_gini_in_legend=True, palette="tab10", figsize=(10, 8), save_path=None)</code></h3>
+<p>Plot Lorenz curves for one or more indicators.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>df</code></td><td>pandas.DataFrame | geopandas.GeoDataFrame</td><td>Data containing indicators and optional weights.</td></tr><tr><td><code>properties</code></td><td>str | iterable[str]</td><td>Indicator column or columns to plot.</td></tr><tr><td><code>weights</code></td><td>str | None</td><td>Optional weight column.</td></tr><tr><td><code>title</code></td><td>str | None</td><td>Optional plot title.</td></tr><tr><td><code>show_gini_in_legend</code></td><td>bool</td><td>If True, include Gini coefficients in legend labels.</td></tr><tr><td><code>palette</code></td><td>str</td><td>Matplotlib colormap or palette name.</td></tr><tr><td><code>figsize</code></td><td>tuple[float, float]</td><td>Figure size in inches.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional path to save the figure.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>matplotlib.axes.Axes</code> — Axes object containing the plot.</p>
+</article><article class="function-ref searchable" data-search-title='accessx.equity.plot_sufficientarian_score(*, df, score_col="sufficient_score", title=None, sufficiency_target=0.8, attainment_levels=(0.25, 0.50, 0.75, 1.00), bins=20, figsize=(12, 5), color="#3B82F6", save_path=None)' id="plot-sufficientarian-score">
+<h3><code>accessx.equity.plot_sufficientarian_score(*, df, score_col="sufficient_score", title=None, sufficiency_target=0.8, attainment_levels=(0.25, 0.50, 0.75, 1.00), bins=20, figsize=(12, 5), color="#3B82F6", save_path=None)</code></h3>
+<p>Plot the distribution of sufficiency scores and attainment shares.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>df</code></td><td>pandas.DataFrame | geopandas.GeoDataFrame</td><td>Data containing the sufficiency score column.</td></tr><tr><td><code>score_col</code></td><td>str</td><td>Column containing sufficiency scores.</td></tr><tr><td><code>title</code></td><td>str | None</td><td>Optional plot title.</td></tr><tr><td><code>sufficiency_target</code></td><td>float</td><td>Reference target shown on the plot.</td></tr><tr><td><code>attainment_levels</code></td><td>tuple[float, ...]</td><td>Score levels used to summarize attainment shares.</td></tr><tr><td><code>bins</code></td><td>int</td><td>Number of histogram bins.</td></tr><tr><td><code>figsize</code></td><td>tuple[float, float]</td><td>Figure size in inches.</td></tr><tr><td><code>color</code></td><td>str</td><td>Matplotlib color for the histogram.</td></tr><tr><td><code>save_path</code></td><td>str | pathlib.Path | None</td><td>Optional path to save the figure.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>matplotlib.axes.Axes</code> — Axes object containing the plot.</p>
+</article></div>
+</details><details class="module-ref searchable" data-search-title="accessx.io" id="accessx-io-module">
+<summary><code>accessx.io</code><span>Read and write geospatial tabular data.</span></summary>
+<div class="module-body"><article class="function-ref searchable" data-search-title="accessx.io.save_gdf(gdf, path, driver=None)" id="save-gdf">
+<h3><code>accessx.io.save_gdf(gdf, path, driver=None)</code></h3>
+<p>Save a GeoDataFrame to disk, inferring the driver from the extension when possible.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>gdf</code></td><td>geopandas.GeoDataFrame</td><td>GeoDataFrame to write.</td></tr><tr><td><code>path</code></td><td>str | pathlib.Path</td><td>Output path.</td></tr><tr><td><code>driver</code></td><td>str | None</td><td>Optional OGR driver. If omitted, GeoJSON is inferred for <code>.geojson</code> and <code>.json</code> files.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>None</code> — Writes the file to disk.</p>
+</article><article class="function-ref searchable" data-search-title="accessx.io.read_gdf(path, *, crs=None)" id="read-gdf">
+<h3><code>accessx.io.read_gdf(path, *, crs=None)</code></h3>
+<p>Read vector data into a GeoDataFrame and optionally enforce a CRS.</p>
+<h4>Parameters</h4><table class="params"><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>path</code></td><td>str | pathlib.Path</td><td>Input path readable by GeoPandas.</td></tr><tr><td><code>crs</code></td><td>int | str | None</td><td>If provided, set the CRS when missing or reproject when a CRS already exists.</td></tr></tbody></table>
+<h4>Returns</h4><p><code>geopandas.GeoDataFrame</code> — Loaded GeoDataFrame.</p>
+</article></div>
+</details>
+</section><section class="doc-page" data-title="Examples" id="examples">
+<header class="page-header searchable" data-page="examples" data-search-title="Examples">
+<p class="eyebrow">accessX 0.1.1</p>
+<h1>Examples</h1>
+<p class="lead">Complete notebooks for common accessX workflows.</p>
+</header>
+<section class="doc-panel searchable" data-search-title="Example notebooks">
+<h2>Case-study notebooks</h2>
+<p>Use the notebooks as complete, reproducible workflow examples. The full folder is available on GitHub.</p>
+<p><a class="button-link" href="https://github.com/TransformTransport/accessX/tree/main/notebooks" rel="noopener" target="_blank">Open notebooks folder</a></p>
+<div class="notebook-list">
+<a href="https://github.com/TransformTransport/accessX/blob/main/notebooks/case_study_accessibility.ipynb" rel="noopener" target="_blank"><strong>case_study_accessibility.ipynb</strong><span>Cumulative opportunities, nearest POIs, Hansen accessibility, and 2SFCA.</span></a>
+<a href="https://github.com/TransformTransport/accessX/blob/main/notebooks/case_study_co_accessibility.ipynb" rel="noopener" target="_blank"><strong>case_study_co_accessibility.ipynb</strong><span>Destination-side accessible population and co-accessibility workflows.</span></a>
+<a href="https://github.com/TransformTransport/accessX/blob/main/notebooks/case_study_equity.ipynb" rel="noopener" target="_blank"><strong>case_study_equity.ipynb</strong><span>Lorenz curves, Gini coefficients, and sufficientarian analysis.</span></a>
+<a href="https://github.com/TransformTransport/accessX/blob/main/notebooks/case_study_isochrones.ipynb" rel="noopener" target="_blank"><strong>case_study_isochrones.ipynb</strong><span>AOIs, hex grids, street networks, edge costs, and isochrones.</span></a>
+<a href="https://github.com/TransformTransport/accessX/blob/main/notebooks/case_study_pois.ipynb" rel="noopener" target="_blank"><strong>case_study_pois.ipynb</strong><span>OpenStreetMap tags, custom POI groups, retries, and query reports.</span></a>
+<a href="https://github.com/TransformTransport/accessX/blob/main/notebooks/case_study_population.ipynb" rel="noopener" target="_blank"><strong>case_study_population.ipynb</strong><span>WorldPop retrieval and population allocation to H3 hexagons.</span></a>
+</div>
+</section>
+</section><section class="doc-page" data-title="Search results" id="search-results"><header class="page-header"><p class="eyebrow">Search</p><h1>Search results</h1><p class="lead" id="search-summary"></p></header><div class="search-list" id="search-list"></div></section>
+</main>
+<aside aria-label="On this page" class="page-toc"><p>On this page</p><nav id="page-toc"></nav></aside>
+</div>
+<script src="assets/accessx.js"></script>
+</body>
+</html>
