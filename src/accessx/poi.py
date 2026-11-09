@@ -34,11 +34,10 @@ TRANSIENT_OSM_ERRORS = (
 
 DEFAULT_RETRY_DELAY = 5.0
 DEFAULT_RETRY_BACKOFF = 2.0
-DEFAULT_REQUEST_PAUSE = 2.0
 
 
 class POIQueryError(RuntimeError):
-    """Raised when one or more OSM POI tag queries fail after retries."""
+    """Raised when OSM POI retrieval cannot complete."""
 
 
 def _is_no_matching_features_error(error: InsufficientResponseError) -> bool:
@@ -49,12 +48,15 @@ def _query_features_with_retries(
     polygon,
     tags: Dict,
     *,
-    tag_key: str,
+    category: str,
     max_retries: int,
+    report=None,
 ):
     attempt = 0
     while True:
         try:
+            if report is not None:
+                report["query_attempts"] += 1
             return ox.features_from_polygon(polygon, tags=tags)
         except InsufficientResponseError as error:
             if _is_no_matching_features_error(error):
@@ -63,13 +65,16 @@ def _query_features_with_retries(
         except TRANSIENT_OSM_ERRORS as error:
             query_error = error
 
+        # A size rejection will not improve by resending the identical request.
+        if isinstance(query_error, ResponseStatusCodeError) and "413" in str(query_error):
+            raise query_error
         if attempt >= max_retries:
             raise query_error
 
         sleep_seconds = DEFAULT_RETRY_DELAY * (DEFAULT_RETRY_BACKOFF ** attempt)
         warnings.warn(
             (
-                f"OSM POI query for tag '{tag_key}' failed on attempt "
+                f"OSM POI query for category '{category}' failed on attempt "
                 f"{attempt + 1}/{max_retries + 1}: {query_error}. "
                 f"Retrying in {sleep_seconds:.1f}s."
             ),
@@ -79,20 +84,66 @@ def _query_features_with_retries(
         if sleep_seconds > 0:
             time.sleep(sleep_seconds)
         attempt += 1
+        if report is not None:
+            report["retries"] += 1
 
 
-def _summarize_failed_queries(failed_queries):
-    parts = []
-    for item in failed_queries:
-        parts.append(
-            f"{item['query_label']} ({item['error_type']}: {item['message']})"
-        )
-    return "; ".join(parts)
+def _overpass_cache_paths(polygon, tags):
+    """Match OSMnx's response cache keys without sending requests.
+
+    OSMnx has no public per-query refresh API, so keep its private helpers here.
+    """
+    url = ox.settings.overpass_url.rstrip("/") + "/interpreter"
+    paths = []
+    for coordinates in ox._overpass._make_overpass_polygon_coord_strs(polygon):
+        query = ox._overpass._create_overpass_features_query(coordinates, tags)
+        key = requests.Request("GET", url, params={"data": query}).prepare().url
+        paths.append(ox._http._resolve_cache_filepath(key))
+    return paths
 
 
-def _pause_between_queries(current_index: int, total_tags: int) -> None:
-    if DEFAULT_REQUEST_PAUSE > 0 and current_index < total_tags - 1:
-        time.sleep(DEFAULT_REQUEST_PAUSE)
+def _retrieve_overpass_categories(polygon, queries, *, refresh, max_retries, progress, report):
+    """One OSMnx call per category; every category must succeed."""
+    categories = {}
+    for query in queries:
+        categories.setdefault(query["category"], {})[query["osm_key"]] = query["osm_values"]
+
+    results = {}
+    original_use_cache = ox.settings.use_cache
+    ox.settings.use_cache = True
+    report["from_cache"] = True
+    try:
+        for category, tags in categories.items():
+            paths = _overpass_cache_paths(polygon, tags)
+            cached = not refresh and all(path.is_file() for path in paths)
+            report["from_cache"] = report["from_cache"] and cached
+            if refresh:
+                # Evict only these responses; OSMnx writes fresh responses back.
+                for path in paths:
+                    path.unlink(missing_ok=True)
+                progress(f"Refreshing Overpass category: {category}...")
+            elif cached:
+                progress(f"Using cached Overpass category: {category}.")
+            else:
+                progress(f"Querying Overpass category: {category}...")
+            try:
+                results[category] = _query_features_with_retries(
+                    polygon, tags, category=category, max_retries=max_retries, report=report,
+                ).sort_index()
+            except InsufficientResponseError as error:
+                if not _is_no_matching_features_error(error):
+                    raise POIQueryError(f"Overpass category '{category}' failed: {error}") from error
+                results[category] = gpd.GeoDataFrame(geometry=[], crs=4326)
+            except TRANSIENT_OSM_ERRORS as error:
+                if isinstance(error, ResponseStatusCodeError) and "413" in str(error):
+                    raise POIQueryError(
+                        f"Overpass category '{category}' request is too large (HTTP 413). "
+                        "Reduce the tags in this category or use source='pbf'."
+                    ) from error
+                raise POIQueryError(f"Overpass category '{category}' failed: {error}") from error
+    finally:
+        ox.settings.use_cache = original_use_cache
+    return results
 
 
 def _with_added_columns(gdf: gpd.GeoDataFrame, data: Dict) -> gpd.GeoDataFrame:
@@ -102,21 +153,6 @@ def _with_added_columns(gdf: gpd.GeoDataFrame, data: Dict) -> gpd.GeoDataFrame:
         geometry=gdf.geometry.name,
         crs=gdf.crs,
     )
-
-
-def _iter_queries_with_progress(queries, show_progress: bool):
-    if not show_progress:
-        return enumerate(queries)
-    try:
-        from tqdm.auto import tqdm
-    except ImportError:
-        warnings.warn(
-            "show_progress=True requires tqdm. Install tqdm or set show_progress=False.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return enumerate(queries)
-    return enumerate(tqdm(queries, desc="Retrieving POIs", unit="query"))
 
 
 def _validate_osm_tags(osm_tags: Dict) -> Dict:
@@ -181,6 +217,19 @@ def _build_poi_queries(*, osm_tags=None, poi_groups=None):
     return queries
 
 
+def _merge_query_tags(queries):
+    """Union tag values, retaining insertion order; True includes every value."""
+    tags = {}
+    for query in queries:
+        key, values = query["osm_key"], query["osm_values"]
+        if values is True or tags.get(key) is True:
+            tags[key] = True
+        else:
+            values = [values] if isinstance(values, str) else values
+            tags[key] = list(dict.fromkeys(tags.get(key, []) + values))
+    return tags
+
+
 def _subcategory_values(gdf: gpd.GeoDataFrame, tag_key: str) -> pd.Series:
     if tag_key not in gdf.columns:
         return pd.Series([None] * len(gdf), index=gdf.index, dtype="object")
@@ -201,6 +250,10 @@ def get_pois_osm(
     max_retries: int = 2,
     show_progress: bool = False,
     return_report: bool = False,
+    source="pbf",
+    pbf_path=None,
+    cache_dir=None,
+    refresh=False,
     columns="minimal",  # "minimal" | "all" | list of extra columns
 ):
     """
@@ -208,7 +261,8 @@ def get_pois_osm(
 
     This function queries OSM using explicit OSM tags. Use `osm_tags` for direct
     OSM-key categories, or `poi_groups` when you want custom analytical categories
-    such as healthcare, open_space, or daily_needs.
+    such as healthcare, open_space, or daily_needs. Overpass queries one category
+    at a time, combining that category's tag filters.
 
     Queries with no matching features inside the AOI are silently skipped by default.
     If no POIs are found for any query, an empty GeoDataFrame is returned (unless
@@ -235,13 +289,26 @@ def get_pois_osm(
         If True, raise an InsufficientResponseError when no POIs are found for any OSM tag.
         If False, return an empty GeoDataFrame.
     max_retries : int, default 2
-        Number of retry attempts for transient OSM/Overpass failures per OSM tag key.
-        Total attempts per OSM tag key are max_retries + 1.
+        Number of retries for transient Overpass failures per category.
+        Total attempts per category are max_retries + 1. HTTP 413 is not retried.
     show_progress : bool, default False
-        If True, show a progress bar over requested OSM queries.
+        If True, print concise source, retrieval and completion messages.
     return_report : bool, default False
         If True, return (pois, report). The report contains requested queries,
         retrieved counts, empty queries, and failed query details.
+    source : {"pbf", "overpass"}, default "pbf"
+        "pbf" reuses a covering cached regional PBF or downloads the smallest
+        covering Geofabrik region. "overpass" queries the API one category at a
+        time. Neither source falls back to the other.
+    pbf_path : path-like, optional
+        Local PBF; the caller is responsible for its coverage and completeness.
+    cache_dir : path-like, optional
+        PBF cache, default ~/.cache/accessx/pbf.
+    refresh : bool, default False
+        False: reuse cached Overpass responses or downloaded/processed PBF data;
+        retrieve missing data as needed. True: replace matching Overpass responses
+        or redownload the regional PBF and recompute POIs. A supplied local
+        pbf_path is reread, not downloaded or replaced.
     columns : {"minimal","all"} or list[str], default "minimal"
         Controls which columns are returned:
         - "minimal": return only core columns (recommended default)
@@ -253,6 +320,13 @@ def get_pois_osm(
     geopandas.GeoDataFrame
         GeoDataFrame containing OSM-derived POIs.
     """
+    started = time.perf_counter()
+    if source not in {"pbf", "overpass"}:
+        raise ValueError("source must be 'pbf' or 'overpass'.")
+    def progress(message):
+        if show_progress:
+            print(f"accessX | {message}")
+    progress("Retrieving OSM POIs...")
     if AOI_wgs84 is None or len(AOI_wgs84) == 0:
         raise ValueError("AOI_wgs84 is empty.")
     if AOI_wgs84.crs is None:
@@ -283,54 +357,43 @@ def get_pois_osm(
         "failed_queries": [],
     }
 
-    for idx, query in _iter_queries_with_progress(queries, show_progress):
-        tag_key = query["osm_key"]
-        tags = {tag_key: query["osm_values"]}
-
+    report.update(source=source, from_cache=None, query_attempts=0, retries=0,
+                  warnings=[], success=False, download_seconds=0.0)
+    tags = _merge_query_tags(queries)
+    raw = None
+    if source == "pbf":
+        from ._poi_pbf import retrieve_pbf
         try:
-            gdf = _query_features_with_retries(
-                poly,
-                tags,
-                tag_key=query["query_label"],
-                max_retries=max_retries,
-            )
-        except InsufficientResponseError as error:
-            if not _is_no_matching_features_error(error):
-                report["failed_queries"].append(
-                    {
-                        "category": query["category"],
-                        "osm_key": tag_key,
-                        "query_label": query["query_label"],
-                        "error_type": type(error).__name__,
-                        "message": str(error),
-                    }
-                )
-            else:
-                report["empty_queries"].append(query["query_label"])
-            _pause_between_queries(idx, len(queries))
-            continue
-        except TRANSIENT_OSM_ERRORS as error:
-            report["failed_queries"].append(
-                {
-                    "category": query["category"],
-                    "osm_key": tag_key,
-                    "query_label": query["query_label"],
-                    "error_type": type(error).__name__,
-                    "message": str(error),
-                }
-            )
-            _pause_between_queries(idx, len(queries))
-            continue
+            raw = retrieve_pbf(poly, tags, pbf_path=pbf_path, cache_dir=cache_dir,
+                               refresh=refresh, progress=progress, report=report)
+        except Exception as error:
+            raise POIQueryError(f"PBF retrieval failed: {error}") from error
+        raw = raw.sort_index()
+    else:
+        progress("Source: Overpass API.")
+        category_results = _retrieve_overpass_categories(
+            poly, queries, refresh=refresh, max_retries=max_retries,
+            progress=progress, report=report,
+        )
+    # Both sources use the same local classification, including overlapping groups.
+    for query in queries:
+        features = category_results[query["category"]] if report["source"] == "overpass" else raw
+        tag_key = query["osm_key"]
+        values = query["osm_values"]
+        if tag_key not in features:
+            gdf = features.iloc[:0].copy()
+        else:
+            mask = features[tag_key].notna() if values is True else features[tag_key].isin(
+                [values] if isinstance(values, str) else values)
+            gdf = features.loc[mask].copy()
 
         if gdf is None or len(gdf) == 0:
             report["empty_queries"].append(query["query_label"])
-            _pause_between_queries(idx, len(queries))
             continue
 
         gdf = gdf[gdf.geometry.geom_type.isin(keep_geom_types)].copy()
         if len(gdf) == 0:
             report["empty_queries"].append(query["query_label"])
-            _pause_between_queries(idx, len(queries))
             continue
 
         # IMPORTANT: preserve OSM identity BEFORE concat(ignore_index=True)
@@ -354,17 +417,8 @@ def get_pois_osm(
         )
         report["retrieved_counts"][query["query_label"]] = int(len(gdf))
         dfs.append(gdf)
-        _pause_between_queries(idx, len(queries))
 
-    if report["failed_queries"]:
-        message = (
-            "Some OSM POI tag queries failed after retries. "
-            "Returned POIs may be incomplete. Failed OSM queries: "
-            f"{_summarize_failed_queries(report['failed_queries'])}. "
-            "Try increasing max_retries or OSMnx settings.requests_timeout."
-        )
-        raise POIQueryError(message)
-
+    report.update(success=True, elapsed_seconds=time.perf_counter() - started)
     if not dfs:
         if raise_on_empty:
             raise InsufficientResponseError("No matching features for any selected OSM tag.")
@@ -383,10 +437,14 @@ def get_pois_osm(
             geometry="geometry",
             crs=AOI_wgs84.crs,
         )
+        report["n_pois"] = 0
+        progress(f"Found 0 POIs in {report['elapsed_seconds']:.1f} seconds.")
         return (empty_gdf, report) if return_report else empty_gdf
 
     # now safe to ignore_index because osm_type/osmid are real columns
     all_gdf = gpd.GeoDataFrame(pd.concat(dfs, ignore_index=True), crs=AOI_wgs84.crs).copy()
+
+    # Keep every category/key match, including overlapping OSM identities.
 
     # stable internal id
     added_cols = {"id": np.arange(len(all_gdf))}
@@ -421,4 +479,6 @@ def get_pois_osm(
     else:
         raise ValueError("columns must be 'minimal', 'all', or a list/tuple/set of column names.")
 
+    report.update(n_pois=len(all_gdf), elapsed_seconds=time.perf_counter() - started)
+    progress(f"Found {len(all_gdf):,} POIs in {report['elapsed_seconds']:.1f} seconds.")
     return (all_gdf, report) if return_report else all_gdf

@@ -1,6 +1,7 @@
 # accessx/graph.py
 from __future__ import annotations
 
+import json
 import warnings
 from typing import Optional, Union
 
@@ -38,47 +39,52 @@ def save_graph(
     *,
     out_dir: Union[str, Path],
     base_name: str = "street",
+    format: str = "geojson",
     save_nodes: bool = True,
     save_edges: bool = True,
-    driver: str = "GeoJSON",
+    driver: Optional[str] = None,
 ) -> None:
-    """
-    Save an OSMnx graph as nodes and/or edges files.
+    """Save a graph as GeoJSON, GeoPackage or OSM PBF.
 
-    Parameters
-    ----------
-    G : MultiDiGraph | MultiGraph
-        Projected OSMnx graph. Note that whether G is directed or undirected
-        is not stored in the saved node/edge files — pass the matching
-        `undirected` value to `load_graph` to rebuild it correctly.
-    out_dir : str | Path
-        Output directory.
-    base_name : str
-        Base filename (suffixes '_nodes_OSM' and '_edges_OSM' are added automatically).
-    save_nodes : bool
-        If True, save nodes GeoDataFrame.
-    save_edges : bool
-        If True, save edges GeoDataFrame.
-    driver : str
-        OGR driver (default: GeoJSON).
+    ``format="geojson"`` (default) and ``format="gpkg"`` write separate
+    ``<base_name>_nodes_OSM`` and ``<base_name>_edges_OSM`` files with the
+    corresponding extension. ``save_nodes``/``save_edges`` select these tables.
+    The legacy ``driver`` argument also accepts GeoJSON or GPKG.
+
+    ``format="pbf"`` writes only ``<base_name>.osm.pbf`` from the entire graph;
+    the node/edge switches do not apply. Intermediate geometry and costs are
+    retained, with accessX tags for reloading attribute types and graph metadata.
+    Generated OSM IDs represent one way per graph edge. Directed edges use
+    oneway=yes (including foot/bicycle); undirected edges use oneway=no.
+    Turn restrictions are not reconstructed. r5r does not automatically use
+    custom cost tags as routing weights.
     """
-    if not save_nodes and not save_edges:
+    format = (driver or format).lower()
+    if format not in {"geojson", "gpkg", "pbf"}:
+        raise ValueError("format must be 'geojson', 'gpkg', or 'pbf'.")
+    if format != "pbf" and not save_nodes and not save_edges:
         raise ValueError("At least one of save_nodes or save_edges must be True.")
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    if format == "pbf":
+        _save_graph_pbf(G, out_dir / f"{base_name}.osm.pbf")
+        return
 
-    nodes_gdf, edges_gdf = ox.graph_to_gdfs(G, nodes=True, edges=True)
-
+    ogr_driver = "GeoJSON" if format == "geojson" else "GPKG"
+    nodes, edges = ox.graph_to_gdfs(G)
+    if format == "gpkg":
+        # GeoPackage has no list field type. Mark JSON lists for lossless reload.
+        for frame in (nodes, edges):
+            for column in frame.columns.drop(frame.geometry.name):
+                frame[column] = frame[column].map(
+                    lambda value: "accessx:list:" + json.dumps(list(value), default=str)
+                    if isinstance(value, (list, tuple, set)) else value
+                )
     if save_nodes:
-        nodes_path = out_dir / f"{base_name}_nodes_OSM.geojson"
-        save_gdf(nodes_gdf, nodes_path, driver=driver)
-
+        save_gdf(nodes, out_dir / f"{base_name}_nodes_OSM.{format}", driver=ogr_driver)
     if save_edges:
-        # keep u, v, key as explicit columns (important)
-        edges_gdf = edges_gdf.reset_index()
-        edges_path = out_dir / f"{base_name}_edges_OSM.geojson"
-        save_gdf(edges_gdf, edges_path, driver=driver)
+        save_gdf(edges.reset_index(), out_dir / f"{base_name}_edges_OSM.{format}", driver=ogr_driver)
 
 
 def load_graph(
@@ -87,33 +93,58 @@ def load_graph(
     base_name: Optional[str] = None,
     nodes_path: Optional[Union[str, Path]] = None,
     edges_path: Optional[Union[str, Path]] = None,
+    pbf_path: Optional[Union[str, Path]] = None,
+    format: str = "auto",
     crs: Optional[Union[int, str]] = None,
     node_id_col: str = "osmid",
     undirected: bool = False,
 ) -> Union[nx.MultiDiGraph, nx.MultiGraph]:
-    """
-    Load a graph from saved nodes/edges files and rebuild an OSMnx graph.
+    """Load an accessX graph, detecting GeoJSON, GeoPackage or PBF by filename.
 
-    Reads nodes/edges (GeoJSON/GPKG/etc.), restores required indexes:
-    - nodes indexed by node_id_col (default 'osmid')
-    - edges indexed by ['u','v','key']
+    Supply ``out_dir`` and ``base_name``, a pair of ``nodes_path``/``edges_path``,
+    or a single ``pbf_path``. If a directory contains multiple matching formats,
+    select one explicitly with ``format="geojson"``, ``"gpkg"`` or ``"pbf"``.
+    Otherwise ``format="auto"`` detects the only available format.
 
-    Provide either:
-    - (out_dir + base_name) following AccessX naming convention, OR
-    - explicit nodes_path and edges_path.
-    
-    undirected : bool
-        If True, convert the rebuilt graph to an undirected MultiGraph.
-        ox.graph_from_gdfs always rebuilds a MultiDiGraph, so this must be
-        requested explicitly to match the graph that was originally saved.
+    PBF loading supports accessX exports, not arbitrary regional OSM extracts.
+    New PBF exports retain graph direction, CRS, IDs and cost attribute types.
+    ``crs`` optionally projects the loaded graph to a different CRS. For node/edge
+    files, pass ``undirected=True`` when the saved graph was undirected.
     """
-    # Determine paths
-    if nodes_path is None or edges_path is None:
+    format = format.lower()
+    if format not in {"auto", "geojson", "gpkg", "pbf"}:
+        raise ValueError("format must be 'auto', 'geojson', 'gpkg', or 'pbf'.")
+    if pbf_path is not None:
+        if nodes_path is not None or edges_path is not None or format not in {"auto", "pbf"}:
+            raise ValueError("Use pbf_path alone with format='auto' or 'pbf'.")
+        return _load_graph_pbf(Path(pbf_path), crs=crs, undirected=undirected)
+    if nodes_path is not None or edges_path is not None:
+        if nodes_path is None or edges_path is None:
+            raise ValueError("Provide both nodes_path and edges_path.")
+        extension = Path(nodes_path).suffix.lower().lstrip(".")
+        if extension not in {"geojson", "gpkg"} or Path(edges_path).suffix.lower() != f".{extension}":
+            raise ValueError("Node/edge files must both be .geojson or both be .gpkg.")
+        if format not in {"auto", extension}:
+            raise ValueError("format does not match the node/edge filename extensions.")
+    else:
         if out_dir is None or base_name is None:
-            raise ValueError("Provide either (nodes_path AND edges_path) OR (out_dir AND base_name).")
+            raise ValueError("Provide out_dir and base_name, node/edge paths, or pbf_path.")
         out_dir = Path(out_dir)
-        nodes_path = out_dir / f"{base_name}_nodes_OSM.geojson"
-        edges_path = out_dir / f"{base_name}_edges_OSM.geojson"
+        if format == "auto":
+            available = [extension for extension in ("geojson", "gpkg")
+                         if (out_dir / f"{base_name}_nodes_OSM.{extension}").is_file()
+                         and (out_dir / f"{base_name}_edges_OSM.{extension}").is_file()]
+            if (out_dir / f"{base_name}.osm.pbf").is_file():
+                available.append("pbf")
+            if not available:
+                raise FileNotFoundError(f"No saved graph found for '{base_name}' in {out_dir}.")
+            if len(available) > 1:
+                raise ValueError(f"Multiple graph formats found: {available}. Select format explicitly.")
+            format = available[0]
+        if format == "pbf":
+            return _load_graph_pbf(out_dir / f"{base_name}.osm.pbf", crs=crs, undirected=undirected)
+        nodes_path = out_dir / f"{base_name}_nodes_OSM.{format}"
+        edges_path = out_dir / f"{base_name}_edges_OSM.{format}"
 
     nodes_path = Path(nodes_path)
     edges_path = Path(edges_path)
@@ -124,8 +155,17 @@ def load_graph(
         raise FileNotFoundError(f"Edges file not found: {edges_path}")
 
     # Read
-    nodes = read_gdf(nodes_path, crs=crs)
-    edges = read_gdf(edges_path, crs=crs)
+    nodes = read_gdf(nodes_path)
+    edges = read_gdf(edges_path)
+    # Restore marked GPKG lists and normalize arrays returned by some GDAL readers.
+    for frame in (nodes, edges):
+        for column in frame.columns.drop(frame.geometry.name):
+            frame[column] = frame[column].map(
+                lambda value: json.loads(value.removeprefix("accessx:list:"))
+                if nodes_path.suffix.lower() == ".gpkg" and isinstance(value, str)
+                and value.startswith("accessx:list:")
+                else value.tolist() if hasattr(value, "tolist") else value
+            )
 
     # --- Restore nodes index ---
     if node_id_col in nodes.columns:
@@ -158,6 +198,12 @@ def load_graph(
         )
     nodes["geometry"] = gpd.points_from_xy(nodes["x"], nodes["y"], crs=nodes.crs)
 
+    # Project geometry and x/y together; assigning a new CRS alone misplaces nodes.
+    if crs is not None:
+        nodes = nodes.set_crs(crs) if nodes.crs is None else nodes.to_crs(crs)
+        edges = edges.set_crs(crs) if edges.crs is None else edges.to_crs(crs)
+        nodes["x"], nodes["y"] = nodes.geometry.x, nodes.geometry.y
+
     # Rebuild graph
     G = ox.graph_from_gdfs(nodes, edges)
 
@@ -171,6 +217,132 @@ def load_graph(
         G = ox.convert.to_undirected(G)
 
     return G
+
+def _pbf_tags(attributes):
+    """Store readable OSM tags plus original attribute types for accessX reloads."""
+    import pandas as pd
+
+    tags, original = {}, {}
+    for key, value in attributes.items():
+        if key in {"geometry", "x", "y"} or isinstance(value, dict):
+            continue
+        if isinstance(value, (list, tuple, set)):
+            original[key] = list(value)
+            tags[str(key)] = ";".join(str(item) for item in value)
+        elif value is not None and pd.notna(value):
+            value = value.item() if hasattr(value, "item") else value
+            original[key] = value
+            tags[str(key)] = ("yes" if value else "no") if isinstance(value, bool) else str(value)
+    tags["accessx:attributes"] = json.dumps(original, default=str)
+    return tags
+
+
+def _load_graph_pbf(path, *, crs, undirected):
+    """Read the OSM way stored for each accessX graph edge, without downloads."""
+    import osmium
+    from shapely.geometry import LineString
+
+    if not path.is_file():
+        raise FileNotFoundError(f"PBF file not found: {path}")
+    locations, endpoints = {}, {}
+    graph = nx.MultiDiGraph(crs=4326, simplified=True)
+    metadata = {}
+    saved_directed = True
+    for element in osmium.FileProcessor(str(path)):
+        tags = dict(element.tags)
+        if element.is_node():
+            locations[element.id] = (element.location.lon, element.location.lat)
+            if "accessx:graph" in tags:
+                saved = json.loads(tags["accessx:graph"])
+                metadata, saved_directed = saved["attributes"], saved["directed"]
+            if "accessx:node_id" in tags:
+                node_id = json.loads(tags["accessx:node_id"])
+                endpoints[element.id] = node_id
+                graph.add_node(node_id, x=element.location.lon, y=element.location.lat,
+                               **json.loads(tags.get("accessx:attributes", "{}")))
+        elif element.is_way():
+            if "accessx:edge_key" not in tags:
+                raise ValueError("PBF loading supports accessX exports, not regional OSM extracts.")
+            references = [node.ref for node in element.nodes]
+            u, v = (endpoints.get(ref, ref) for ref in (references[0], references[-1]))
+            for node_id, ref in ((u, references[0]), (v, references[-1])):
+                if node_id not in graph:
+                    lon, lat = locations[ref]
+                    graph.add_node(node_id, x=lon, y=lat)
+            attributes = json.loads(tags.get("accessx:attributes", "{}"))
+            if "accessx:attributes" not in tags:
+                # Earlier accessX exports only stored string tags.
+                for key, value in tags.items():
+                    if not key.startswith("accessx:"):
+                        try:
+                            value = json.loads(value)
+                        except ValueError:
+                            pass
+                        attributes[key] = value
+            geometry = LineString([locations[ref] for ref in references])
+            key = json.loads(tags["accessx:edge_key"])
+            graph.add_edge(u, v, key=key, geometry=geometry, **attributes)
+    if not graph:
+        raise ValueError("PBF contains no accessX graph nodes.")
+    graph = ox.project_graph(graph, to_crs=crs or metadata.get("crs", 4326))
+    graph.graph.update({key: value for key, value in metadata.items() if key != "crs"})
+    if undirected or not saved_directed:
+        graph = ox.convert.to_undirected(graph)
+    return graph
+
+
+def _save_graph_pbf(G, path):
+    """Export current topology, geometry and attributes using generated OSM IDs."""
+    import tempfile
+    import osmium
+
+    nodes, edges = ox.graph_to_gdfs(G)
+    nodes, edges = nodes.to_crs(4326), edges.to_crs(4326)
+    node_ids = {node: index for index, node in enumerate(nodes.index, start=1)}
+    locations = [(point.x, point.y) for point in nodes.geometry]
+    ways = []
+    for (u, v, key), edge in edges.iterrows():
+        coords = list(edge.geometry.coords)
+        start = locations[node_ids[u] - 1]
+        # OSMnx edge geometry can be oriented opposite to the graph edge.
+        if sum((coords[-1][i] - start[i]) ** 2 for i in (0, 1)) < sum(
+            (coords[0][i] - start[i]) ** 2 for i in (0, 1)
+        ):
+            coords.reverse()
+        references = [node_ids[u]]
+        for coordinate in coords[1:-1]:
+            locations.append(coordinate[:2])
+            references.append(len(locations))
+        references.append(node_ids[v])
+        tags = _pbf_tags(edge)
+        key = key.item() if hasattr(key, "item") else key
+        tags["accessx:edge_key"] = json.dumps(key)
+        # Direction follows the current graph, including directed cost variants.
+        for tag in ("oneway", "oneway:foot", "oneway:bicycle"):
+            tags[tag] = "yes" if G.is_directed() else "no"
+        ways.append((references, tags))
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=path.parent) as directory:
+        temporary = Path(directory) / "network.osm.pbf"
+        with osmium.SimpleWriter(str(temporary)) as writer:
+            for node_id, location in enumerate(locations, start=1):
+                attributes = nodes.iloc[node_id - 1] if node_id <= len(nodes) else {}
+                tags = _pbf_tags(attributes)
+                if node_id <= len(nodes):
+                    original_id = nodes.index[node_id - 1]
+                    original_id = original_id.item() if hasattr(original_id, "item") else original_id
+                    tags["accessx:node_id"] = json.dumps(original_id)
+                if node_id == 1:
+                    tags["accessx:graph"] = json.dumps(
+                        {"directed": G.is_directed(), "attributes": G.graph}, default=str,
+                    )
+                writer.add_node(osmium.osm.mutable.Node(id=node_id, location=location, tags=tags))
+            for way_id, (references, tags) in enumerate(ways, start=1):
+                writer.add_way(osmium.osm.mutable.Way(id=way_id, nodes=references, tags=tags))
+        temporary.replace(path)
+
 
 def build_network(
     AOI: gpd.GeoDataFrame,
